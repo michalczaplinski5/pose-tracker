@@ -1,65 +1,136 @@
 <!doctype html>
 <html lang="pl">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#080e1d">
-    <meta name="description" content="Wykrywanie pozycji ciała w czasie rzeczywistym z użyciem kamery i MediaPipe. Obraz jest analizowany lokalnie.">
-    <title>Pose Tracker — analiza sylwetki</title>
-    <link rel="stylesheet" href="styles.css">
-  </head>
-  <body>
-    <div class="shell">
-      <header class="topbar">
-        <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><span>Pose<span class="brand-accent">Tracker</span></span></div>
-        <span class="top-label"><span class="dot"></span> Analiza lokalna</span>
-      </header>
-
-      <main>
-        <section class="intro">
-          <p class="eyebrow">WIZJA KOMPUTEROWA · MEDIAPIPE</p>
-          <h1>Śledzenie ruchu <span>na żywo.</span></h1>
-          <p class="lead">Włącz kamerę i obserwuj, jak model AI rozpoznaje punkty ciała w czasie rzeczywistym. Nagranie nie jest wysyłane na serwer.</p>
-        </section>
-
-        <section class="panel" aria-label="Podgląd kamery">
-          <div class="panel-header">
-            <div class="panel-title"><span class="camera-icon" aria-hidden="true">◉</span> Podgląd kamery</div>
-            <div class="status-badge" id="model-badge"><span class="badge-dot"></span><span id="model-label">Model nieaktywny</span></div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080e1d">
+  <meta name="description" content="PoseTracker RobotLab — śledzenie ciała i dłoni, wirtualna mysz i interfejs gestowy.">
+  <title>PoseTracker RobotLab — sterowanie gestami</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">✳</span><span>Pose<span class="brand-accent">Tracker</span> <span class="brand-detail">RobotLab</span></span></div>
+    <span class="top-label"><span class="dot"></span> Przetwarzanie lokalne</span>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">HUMAN–MACHINE INTERFACE · MEDIAPIPE</p>
+      <h1>Steruj ruchem <span>bez dotykania myszki.</span></h1>
+      <p class="lead">Śledzenie sylwetki, obu dłoni i opcjonalnie twarzy. Wyceluj palcem wskazującym, a następnie złącz kciuk i palec wskazujący, żeby kliknąć. Najpierw przetestuj gesty w polu demonstracyjnym.</p>
+    </section>
+    <div class="dashboard">
+      <section class="panel camera-panel" aria-label="Śledzenie kamery">
+        <div class="panel-header">
+          <div class="panel-title"><span class="camera-icon" aria-hidden="true">◉</span> Kamera i detekcja</div>
+          <div class="status-badge" id="model-badge"><span class="badge-dot"></span><span id="model-label">Nieaktywne</span></div>
+        </div>
+        <div class="stage mirrored" id="stage">
+          <video id="camera" playsinline autoplay muted aria-label="Podgląd kamery"></video>
+          <canvas id="overlay" aria-label="Punkty detekcji na obrazie"></canvas>
+          <div class="placeholder">
+            <div class="placeholder-symbol" aria-hidden="true">⌗</div>
+            <strong>Kamera wyłączona</strong>
+            <span>Uruchom ją, aby rozpocząć śledzenie</span>
           </div>
-
-          <div class="stage" id="stage">
-            <video id="camera" playsinline autoplay muted aria-label="Obraz z kamery"></video>
-            <canvas id="overlay" aria-label="Wykryte punkty sylwetki"></canvas>
-            <div class="placeholder" id="placeholder">
-              <div class="placeholder-symbol" aria-hidden="true">⌗</div>
-              <strong>Kamera jest wyłączona</strong>
-              <span>Kliknij „Uruchom kamerę”, aby rozpocząć</span>
-            </div>
-            <div class="stage-tag" id="stage-tag" hidden><span class="live-dot"></span> NA ŻYWO</div>
+          <div class="stage-tag" id="stage-tag" hidden><span class="live-dot"></span> LIVE</div>
+        </div>
+        <div class="panel-footer">
+          <div class="actions">
+            <button class="button primary" id="start" type="button">Uruchom kamerę</button>
+            <button class="button danger" id="stop" type="button" hidden>Zatrzymaj kamerę</button>
           </div>
+          <span class="fps" id="fps">— FPS</span>
+        </div>
+        <p class="message" id="message" role="status">Gotowe. Po naciśnięciu przycisku przeglądarka poprosi o dostęp do kamery.</p>
+      </section>
 
-          <div class="panel-footer">
-            <div class="actions">
-              <button class="button primary" type="button" id="start">Uruchom kamerę</button>
-              <button class="button danger" type="button" id="stop" hidden>Zatrzymaj</button>
-            </div>
-            <div class="fps" id="fps" aria-live="off">— FPS</div>
+      <section class="panel controls-panel" aria-label="Parametry śledzenia">
+        <div class="panel-header"><div class="panel-title">Ustawienia śledzenia</div></div>
+        <div class="control-content">
+          <div class="stats">
+            <div class="stat"><strong id="landmarks-count">0</strong><span>Wykryte punkty</span></div>
+            <div class="stat"><strong id="hands-count">0</strong><span>Wykryte dłonie</span></div>
+            <div class="stat"><strong id="gesture-state">—</strong><span>Gest</span></div>
           </div>
-          <p class="message" id="message" role="status" aria-live="polite">Gotowe do uruchomienia. Przeglądarka poprosi o dostęp do kamery.</p>
-        </section>
-
-        <section class="settings" aria-label="Ustawienia wizualizacji">
-          <label class="toggle-row"><input id="show-lines" type="checkbox" checked><span>Połączenia szkieletu</span></label>
-          <label class="toggle-row"><input id="show-points" type="checkbox" checked><span>Punkty ciała</span></label>
-          <label class="toggle-row"><input id="mirror" type="checkbox" checked><span>Odbicie lustrzane</span></label>
-        </section>
-
-        <p class="note"><strong>Prywatność:</strong> analiza obrazu odbywa się na urządzeniu. Przy pierwszym użyciu przeglądarka pobiera bibliotekę MediaPipe i model AI z zewnętrznych serwerów. Aplikacja nie nagrywa ani nie przesyła strumienia wideo.</p>
-      </main>
-
-      <footer>PoseTracker · MediaPipe Pose Landmarker · GitHub Pages</footer>
+          <label class="field" for="pose-model"><span>Model sylwetki</span>
+            <select id="pose-model">
+              <option value="lite">Lite — szybszy</option>
+              <option value="full" selected>Full — dokładniejszy</option>
+              <option value="heavy">Heavy — najbardziej wymagający</option>
+            </select>
+          </label>
+          <p class="hint">Zmiana modelu wymaga ponownego uruchomienia kamery.</p>
+          <div class="switches">
+            <label class="toggle-row"><input type="checkbox" id="show-pose" checked><span>Sylwetka (33 punkty)</span></label>
+            <label class="toggle-row"><input type="checkbox" id="show-hands" checked><span>Obie dłonie (2 × 21 punktów)</span></label>
+            <label class="toggle-row"><input type="checkbox" id="show-face"><span>Twarz (478 punktów, opcjonalnie)</span></label>
+            <label class="toggle-row"><input type="checkbox" id="show-lines" checked><span>Rysuj połączenia szkieletu</span></label>
+            <label class="toggle-row"><input type="checkbox" id="show-points" checked><span>Rysuj punkty</span></label>
+            <label class="toggle-row"><input type="checkbox" id="mirror" checked><span>Odbicie lustrzane</span></label>
+          </div>
+          <hr class="section-rule">
+          <label class="field" for="control-hand"><span>Dłoń sterująca</span>
+            <select id="control-hand">
+              <option value="auto">Automatycznie</option>
+              <option value="Right">Prawa</option>
+              <option value="Left">Lewa</option>
+            </select>
+          </label>
+          <label class="field" for="smoothing"><span>Wygładzanie ruchu <output id="smoothing-label">65%</output></span>
+            <input type="range" id="smoothing" min="0" max="90" value="65">
+          </label>
+        </div>
+      </section>
     </div>
-    <script type="module" src="app.js"></script>
-  </body>
+
+    <section class="panel interaction-panel" aria-label="Wirtualna mysz">
+      <div class="panel-header">
+        <div class="panel-title">Wirtualna mysz — obszar testowy</div>
+        <span class="pill">Bez dostępu do systemu</span>
+      </div>
+      <div class="interaction-content">
+        <div class="mode-line">
+          <label class="toggle-row"><input type="checkbox" id="gesture-enabled"><span>Włącz sterowanie gestami</span></label>
+          <span id="pointer-state" class="state-line" role="status">Tryb wyłączony</span>
+        </div>
+        <p class="hint">Przesuwaj palec wskazujący przed kamerą, żeby poruszać niebieskim kursorem. Złącz kciuk z palcem wskazującym na moment, aby kliknąć jeden z przycisków.</p>
+        <div class="workspace" id="workspace" aria-label="Testowanie klikania dłonią">
+          <div class="workspace-header"><span>OBSZAR ROBOCZY</span><span id="click-count">Kliknięcia: 0</span></div>
+          <div class="workspace-buttons">
+            <button type="button" class="gesture-target" data-action="A">Punkt A</button>
+            <button type="button" class="gesture-target" data-action="B">Punkt B</button>
+            <button type="button" class="gesture-target" data-action="C">Punkt C</button>
+            <button type="button" class="gesture-target" data-action="RESET">Reset</button>
+          </div>
+          <div class="workspace-feedback" id="workspace-feedback">Wybierz punkt gestem lub zwykłą myszką</div>
+          <div class="virtual-cursor" id="virtual-cursor" hidden><span></span></div>
+        </div>
+        <div class="gesture-legend">
+          <span><span class="legend-dot cyan"></span> Ruch: czubek palca wskazującego</span>
+          <span><span class="legend-dot yellow"></span> Klik: kciuk + wskazujący</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel desktop-panel" id="desktop-panel" hidden aria-label="Sterowanie myszą systemową">
+      <div class="panel-header"><div class="panel-title">Mysz systemowa — lokalny most</div><span class="pill warning">Tryb eksperymentalny</span></div>
+      <div class="interaction-content">
+        <p class="hint">Działa tylko po uruchomieniu <code>desktop_bridge.py</code> na własnym komputerze i otwarciu strony przez <code>http://127.0.0.1:8765</code>. Kliknij „Uzbrój mysz”, żeby świadomie zezwolić na ruch i kliknięcia w Windows.</p>
+        <div class="desktop-actions">
+          <button type="button" id="desktop-arm" class="button primary" disabled>Uzbrój mysz systemową</button>
+          <button type="button" id="desktop-disarm" class="button danger" disabled>STOP — rozbrój</button>
+          <span class="state-line" id="desktop-state">Sprawdzanie mostu…</span>
+        </div>
+        <p class="hint">Awaryjne zatrzymanie: klawisz Esc (gdy strona ma fokus), przycisk STOP lub Ctrl+C w terminalu. PyAutoGUI zachowuje awaryjne zatrzymanie w narożniku ekranu. Nie używaj trybu systemowego do sterowania prawdziwym robotem.</p>
+      </div>
+    </section>
+
+    <p class="note"><strong>Prywatność i ograniczenia:</strong> analiza obrazu odbywa się na Twoim urządzeniu. Modele i biblioteka są pobierane przy pierwszym użyciu; obraz nie jest wysyłany. Wersja GitHub Pages steruje wyłącznie wirtualnym kursorem na tej stronie. Systemowa mysz wymaga lokalnego programu. Punkty 3D MediaPipe są estymowane i nie zastępują skalibrowanego systemu motion capture.</p>
+  </main>
+  <footer>PoseTracker RobotLab · MediaPipe Tasks Vision · Statyczny hosting GitHub Pages</footer>
+</div>
+<script type="module" src="./app.js"></script>
+</body>
 </html>
