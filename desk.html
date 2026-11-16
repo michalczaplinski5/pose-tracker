@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#050b12">
+  <meta name="description" content="PoseTracker HoloDesk V5 — przestrzenny pulpit sterowany dłońmi, import zdjęć i modeli GLB.">
+  <title>HoloDesk V5 — PoseTracker</title>
+  <link rel="stylesheet" href="./desk.css?v=5">
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <a href="./" class="brand" aria-label="PoseTracker — strona główna"><span class="brand-icon">✳</span><span>pose<b>tracker</b></span></a>
+    <span class="slash">/</span><span class="product-name">HOLODESK <span class="version">V5</span></span>
+    <nav class="top-nav" aria-label="Przełącz tryb">
+      <a href="./">Air Mouse V4</a>
+      <a href="./holo.html">HoloLab 3D</a>
+      <a class="current" href="./desk.html" aria-current="page">HoloDesk</a>
+    </nav>
+    <div class="connection"><span id="system-led"></span><span id="system-label">SYSTEM STANDBY</span></div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div class="intro-heading">
+        <div class="kicker"><span class="kicker-line"></span> SPATIAL COMPUTING EXPERIMENT 002</div>
+        <h1>Your space. <em>Your gestures.</em></h1>
+        <p>Chwytaj pływające okna, odkładaj je ruchem dłoni i otwieraj narzędzia z przestrzennego menu.</p>
+      </div>
+      <div class="session-id"><span>SESSION / LOCAL</span><strong>HD–005 <span class="session-orb">◌</span></strong></div>
+    </section>
+
+    <div class="toolbar" role="toolbar" aria-label="Narzędzia HoloDesk">
+      <div class="tool-group">
+        <button id="camera-start" class="btn primary" type="button"><span class="btn-icon">◉</span> URUCHOM KAMERĘ</button>
+        <button id="camera-stop" class="btn" type="button" hidden>■ ZATRZYMAJ KAMERĘ</button>
+        <button id="pause" class="btn" type="button" aria-pressed="false">Ⅱ PAUZA</button>
+      </div>
+      <span class="tool-divider"></span>
+      <div class="tool-group">
+        <label class="btn action-label" for="image-input" tabindex="0">⊞ DODAJ ZDJĘCIA</label>
+        <label class="btn action-label" for="glb-input" tabindex="0">⬡ OTWÓRZ MODEL GLB</label>
+        <input id="image-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+        <input id="glb-input" type="file" accept=".glb,model/gltf-binary" hidden>
+        <button id="menu-open" class="btn" type="button">◎ MENU GESTOWE</button>
+      </div>
+      <span class="toolbar-spacer"></span>
+      <button id="layout-reset" class="btn subtle" type="button">↺ RESET UKŁADU</button>
+    </div>
+
+    <section class="desk-grid">
+      <div class="workspace-frame">
+        <div class="workspace-bar"><span><i class="pulse"></i> SPATIAL WORKSPACE</span><div><span>MODE: <b id="mode-text">MOUSE / TOUCH</b></span><span>DEPTH: <b>CSS 3D</b></span></div></div>
+        <div id="workspace" class="workspace" aria-label="Przestrzenny pulpit z pływającymi oknami">
+          <div class="grid-floor" aria-hidden="true"></div>
+          <div class="halo-background" aria-hidden="true"><span class="outer"></span><span class="middle"></span><span class="inner"></span></div>
+          <div class="scene-label top-left">DESK / 01 — WORLD COORDINATES</div>
+          <div class="scene-label top-right" id="workspace-state">NO TRACKING</div>
+          <div id="window-layer" class="window-layer">
+            <article class="spatial-window gallery-window" data-window="gallery" tabindex="0" aria-label="Okno galerii">
+              <div class="window-chrome"><span class="window-symbol">▦</span><div class="window-title"><strong>GALLERY</strong><small>VISUAL ASSETS / 01</small></div><span class="chrome-dots"><i></i><i></i><i></i></span><button class="close-window" type="button" data-close="gallery" aria-label="Ukryj galerię">×</button></div>
+              <div class="gallery-feature">
+                <div class="planet-orb"></div><span class="visual-cross">✦</span>
+                <span class="gallery-number">01 / VISUAL LIBRARY</span>
+                <div class="gallery-caption"><b>Beyond the frame.</b><small>Twoje obrazy. Twoja przestrzeń.</small></div>
+              </div>
+              <div class="window-tail"><span>DROP / IMPORT PHOTOS</span><span class="tail-dot"></span></div>
+            </article>
+
+            <article class="spatial-window model-window" data-window="model" tabindex="0" aria-label="Okno wizualizacji 3D">
+              <div class="window-chrome"><span class="window-symbol">⬡</span><div class="window-title"><strong>OBJECT VIEWER</strong><small>3D SPACE / 02</small></div><span class="chrome-dots"><i></i><i></i><i></i></span><button class="close-window" type="button" data-close="model" aria-label="Ukryj model">×</button></div>
+              <div class="model-stage" id="model-stage">
+                <canvas id="model-canvas" aria-label="Trójwymiarowy obiekt do oglądania"></canvas>
+                <div class="model-css-fallback" id="model-fallback" aria-hidden="true"><div class="fallback-ring r1"></div><div class="fallback-ring r2"></div><div class="fallback-orb"></div></div>
+                <span class="model-corner">3D / LIVE RENDER</span><span class="model-corner bottom">DRAG TO ORBIT</span>
+              </div>
+              <div class="window-tail"><span id="model-file-label">PROCEDURAL CORE / DEMO</span><span class="tail-dot"></span></div>
+            </article>
+
+            <article class="spatial-window notes-window" data-window="notes" tabindex="0" aria-label="Panel notatek">
+              <div class="window-chrome"><span class="window-symbol">≡</span><div class="window-title"><strong>QUICK NOTES</strong><small>PERSONAL SPACE / 03</small></div><span class="chrome-dots"><i></i><i></i><i></i></span><button class="close-window" type="button" data-close="notes" aria-label="Ukryj notatki">×</button></div>
+              <div class="notes-body"><div class="note-date">● ACTIVE SESSION</div><textarea id="notes-editor" aria-label="Twoje notatki" spellcheck="true" placeholder="Zapisz pomysł, zadanie albo notatkę…">Ideas don't stay on paper.
+Make them move.</textarea><div class="note-foot">AUTOSAVE / ON DEVICE <span>✦</span></div></div>
+            </article>
+
+            <article class="spatial-window data-window" data-window="data" tabindex="0" aria-label="Panel danych demonstracyjnych">
+              <div class="window-chrome"><span class="window-symbol">◫</span><div class="window-title"><strong>LIVE SIGNALS</strong><small>DEMO DATA / 04</small></div><span class="chrome-dots"><i></i><i></i><i></i></span><button class="close-window" type="button" data-close="data" aria-label="Ukryj panel danych">×</button></div>
+              <div class="data-body">
+                <div class="data-stats"><div><small>TRACKING</small><b id="data-hands">00</b><span>HANDS</span></div><div><small>ENGINE</small><b id="data-fps">—</b><span>FPS</span></div><div><small>PANELS</small><b id="data-panels">04</b><span>VISIBLE</span></div></div>
+                <div class="bar-graph" aria-label="Dekoracyjny wykres sygnałów, bez danych pomiarowych">
+                  <span style="--v:31%"></span><span style="--v:58%"></span><span style="--v:45%"></span><span style="--v:85%"></span><span style="--v:64%"></span><span style="--v:92%"></span><span style="--v:74%"></span><span style="--v:48%"></span><span style="--v:69%"></span><span style="--v:55%"></span><span style="--v:87%"></span><span style="--v:62%"></span>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div id="gesture-pointer" class="gesture-pointer" hidden aria-hidden="true"><span class="crosshair"></span><small>HAND POINTER</small></div>
+          <div id="radial-menu" class="radial-menu" hidden aria-label="Menu przestrzenne">
+            <span class="menu-orbit"></span><div class="menu-center">◎<small>SELECT</small></div>
+            <button class="radial-action" type="button" data-command="gallery" style="--mx:0px;--my:-112px"><b>▦</b><span>GALERIA</span></button>
+            <button class="radial-action" type="button" data-command="model" style="--mx:105px;--my:-56px"><b>⬡</b><span>MODEL 3D</span></button>
+            <button class="radial-action" type="button" data-command="notes" style="--mx:105px;--my:56px"><b>≡</b><span>NOTATKI</span></button>
+            <button class="radial-action" type="button" data-command="data" style="--mx:0px;--my:112px"><b>◫</b><span>SYGNAŁY</span></button>
+            <button class="radial-action" type="button" data-command="arrange" style="--mx:-105px;--my:56px"><b>☷</b><span>UKŁAD</span></button>
+            <button class="radial-action" type="button" data-command="dismiss" style="--mx:-105px;--my:-56px"><b>×</b><span>ZAMKNIJ</span></button>
+          </div>
+          <div id="drop-hint" class="drop-hint" hidden>UPUŚĆ ZDJĘCIA LUB MODEL .GLB</div>
+          <div class="scene-label bottom-left">GESTURE ENGINE / <span id="gesture-state">IDLE</span></div>
+          <div class="scene-label bottom-right">XYZ / VIRTUAL DESKTOP</div>
+        </div>
+        <div class="workspace-footer">
+          <span><i class="footer-node"></i> <span id="feedback" role="status" aria-live="polite">Pulpit gotowy. Przeciągaj okna za nagłówek lub uruchom kamerę.</span></span>
+          <span>◈ LOCAL / PRIVATE</span>
+        </div>
+      </div>
+
+      <aside class="side-column">
+        <section class="side-card">
+          <div class="side-head"><span>◉ LIVE VISION</span><strong id="camera-state">STANDBY</strong></div>
+          <div class="camera-view" id="camera-view"><video id="camera" autoplay playsinline muted></video><canvas id="camera-overlay"></canvas><div class="camera-placeholder"><span>⌖</span><b>CAMERA OFFLINE</b><small>Użyj przycisku na pasku narzędzi</small></div><div class="camera-hud">POSETRACKER / HAND LANDMARKER</div></div>
+          <div class="side-stats"><div><small>HANDS</small><strong id="hands-value">00</strong></div><div><small>INFERENCE</small><strong id="fps-value">—</strong></div><div><small>MODE</small><strong id="mode-value">MOUSE</strong></div></div>
+        </section>
+        <section class="side-card guide-card">
+          <div class="side-head"><span>◇ GESTURE LANGUAGE</span><strong>V5</strong></div>
+          <div class="gesture-item"><div class="gesture-glyph">☝</div><div><b>POINT / AIM</b><small>Wskazuj wybrane okno</small></div></div>
+          <div class="gesture-item"><div class="gesture-glyph">🤏</div><div><b>PINCH / MOVE / THROW</b><small>Chwyć, przesuń i puść z rozpędem</small></div></div>
+          <div class="gesture-item"><div class="gesture-glyph">🤏🤏</div><div><b>TWO-HAND TRANSFORM</b><small>Skalowanie i obrót okna</small></div></div>
+          <div class="gesture-item"><div class="gesture-glyph">🖐️</div><div><b>PALM / MENU</b><small>Przytrzymaj otwartą dłoń 0,7 s</small></div></div>
+          <div class="gesture-item"><div class="gesture-glyph">✊</div><div><b>FIST / PAUSE</b><small>Przytrzymaj 0,95 s; wznowienie dłonią</small></div></div>
+        </section>
+        <section class="side-card small-help"><div class="side-head"><span>✦ TIPS & CONTROLS</span></div><p><b>Bez kamery:</b> chwyć nagłówek i przeciągnij. Kółkiem myszy skaluj okno; możesz też użyć menu.</p><p><b>Import:</b> zdjęcia i modele GLB otwierają się lokalnie. Niczego nie wysyłamy na serwer.</p><button class="helper-button" id="show-help" type="button">Pokaż skróty sterowania <span>↗</span></button></section>
+      </aside>
+    </section>
+    <footer class="footer"><span>POSETRACKER / HOLODESK V5</span><span>Eksperymentalny interfejs przestrzenny · Kamera 2D estymuje ruch, nie mierzy głębokości · Bez sterowania rzeczywistymi urządzeniami</span></footer>
+  </main>
+</div>
+<script type="module" src="./desk.js?v=5"></script>
+</body>
+</html>
