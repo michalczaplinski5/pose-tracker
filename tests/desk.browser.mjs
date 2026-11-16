@@ -27,6 +27,15 @@ try{
     assert.equal(await page.locator('.spatial-window').count(),4);
     assert.equal(await page.locator('#model-canvas').count(),1);
   });
+  await test('V5.1 sensitivity controls and calibration guidance respond',async()=>{
+    const slider=page.locator('#pinch');
+    await slider.focus();
+    await slider.press('End');
+    assert.equal(await page.locator('#pinch-label').textContent(),'100%');
+    await page.locator('#calibration-start').click();
+    assert.match(await page.locator('#feedback').textContent(),/kamerę/i);
+    assert.equal(await page.locator('#calibration-layer').isVisible(),false);
+  });
   await test('radial menu is clickable with mouse',async()=>{
     await page.locator('#menu-open').click();
     assert.equal(await page.locator('.radial-action[data-command="notes"]').isVisible(),true);
