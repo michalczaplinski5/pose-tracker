@@ -1,4 +1,4 @@
-name: Verify PoseTracker V4 + HoloLab
+name: Verify PoseTracker V4 + HoloLab + HoloDesk V5
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   tests:
-    name: Gesture engines, HoloLab, app and bridge
+    name: Gesture engines, HoloDesk, HoloLab, AirMouse and bridge
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +30,10 @@ jobs:
           node --input-type=module --check < holo.js
           node --input-type=module --check < holo-scene.mjs
           node --input-type=module --check < holo-gestures.mjs
+      - name: HoloDesk V5 JavaScript syntax
+        run: |
+          node --input-type=module --check < desk.js
+          node --input-type=module --check < desk-engine.mjs
       - name: Python bridge syntax
         run: python -m py_compile desktop_bridge.py
       - name: Local bridge HTTP behavior and fail-safe tests
