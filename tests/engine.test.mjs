@@ -76,6 +76,13 @@ test('short pinch clicks once on release', () => {
   assert.deepEqual(m.update('point',1170,pos).map(e=>e.type),['click']);
   assert.equal(m.update('point',1250,pos).length,0);
 });
+
+test('releasing short pinch into open palm still clicks', () => {
+  const m = new GestureMachine();
+  m.update('pinch', 1000, pos);
+  m.update('pinch', 1150, pos);
+  assert.ok(m.update('open', 1200, pos).some(event => event.type === 'click'));
+});
 test('click cannot repeat within cooldown', () => {
   const m = new GestureMachine();
   m.update('pinch',1000,pos);m.update('point',1160,pos);
