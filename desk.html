@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#050b12">
   <meta name="description" content="PoseTracker HoloDesk V5 — przestrzenny pulpit sterowany dłońmi, import zdjęć i modeli GLB.">
-  <title>HoloDesk V5 — PoseTracker</title>
-  <link rel="stylesheet" href="./desk.css?v=5">
+  <title>HoloDesk V5.1 — PoseTracker</title>
+  <link rel="stylesheet" href="./desk.css?v=51">
   <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 </head>
 <body>
 <div class="app-shell">
   <header class="topbar">
     <a href="./" class="brand" aria-label="PoseTracker — strona główna"><span class="brand-icon">✳</span><span>pose<b>tracker</b></span></a>
-    <span class="slash">/</span><span class="product-name">HOLODESK <span class="version">V5</span></span>
+    <span class="slash">/</span><span class="product-name">HOLODESK <span class="version">V5.1</span></span>
     <nav class="top-nav" aria-label="Przełącz tryb">
       <a href="./">Air Mouse V4</a>
       <a href="./holo.html">HoloLab 3D</a>
@@ -95,7 +95,11 @@ Make them move.</textarea><div class="note-foot">AUTOSAVE / ON DEVICE <span>✦<
               </div>
             </article>
           </div>
-          <div id="gesture-pointer" class="gesture-pointer" hidden aria-hidden="true"><span class="crosshair"></span><small>HAND POINTER</small></div>
+          <div id="gesture-pointer" class="gesture-pointer" hidden aria-hidden="true"><span class="crosshair"></span><small id="cursor-caption">WSKAŻ OKNO</small></div>
+          <div class="calibration-layer" id="calibration-layer" hidden>
+            <div class="calibration-banner"><strong id="calibration-title">KALIBRACJA / 1 Z 2</strong><p id="calibration-instruction">Ustaw palec w wygodnym lewym górnym rogu zakresu ruchu dłoni.</p><div class="calibration-controls"><button type="button" id="calibration-capture">ZAPISZ POZYCJĘ</button><button type="button" id="calibration-cancel">ANULUJ</button></div></div>
+            <div class="calibration-marker" id="calibration-marker"></div>
+          </div>
           <div id="radial-menu" class="radial-menu" hidden aria-label="Menu przestrzenne">
             <span class="menu-orbit"></span><div class="menu-center">◎<small>SELECT</small></div>
             <button class="radial-action" type="button" data-command="gallery" style="--mx:0px;--my:-112px"><b>▦</b><span>GALERIA</span></button>
@@ -121,13 +125,24 @@ Make them move.</textarea><div class="note-foot">AUTOSAVE / ON DEVICE <span>✦<
           <div class="camera-view" id="camera-view"><video id="camera" autoplay playsinline muted></video><canvas id="camera-overlay"></canvas><div class="camera-placeholder"><span>⌖</span><b>CAMERA OFFLINE</b><small>Użyj przycisku na pasku narzędzi</small></div><div class="camera-hud">POSETRACKER / HAND LANDMARKER</div></div>
           <div class="side-stats"><div><small>HANDS</small><strong id="hands-value">00</strong></div><div><small>INFERENCE</small><strong id="fps-value">—</strong></div><div><small>MODE</small><strong id="mode-value">MOUSE</strong></div></div>
         </section>
+        <section class="side-card control-card">
+          <div class="side-head"><span>◎ CONTROL TUNING</span><strong id="tracking-quality">BRAK DŁONI</strong></div>
+          <div class="control-settings">
+            <label class="control-slider"><span>Zakres ruchu <output id="reach-label">72%</output></span><input id="reach" type="range" min="45" max="100" step="1" value="72"></label>
+            <label class="control-slider"><span>Stabilizacja <output id="smooth-label">55%</output></span><input id="smooth" type="range" min="0" max="100" step="1" value="55"></label>
+            <label class="control-slider"><span>Łatwość chwytu <output id="pinch-label">70%</output></span><input id="pinch" type="range" min="0" max="100" step="1" value="70"></label>
+            <div class="calibration-actions"><button type="button" id="calibration-start">◎ KALIBRUJ RĘKĘ</button><button type="button" id="calibration-reset">↺ RESET</button></div>
+            <p class="calibration-note" id="calibration-note">Kursor mapowany automatycznie. Dla lepszej precyzji wykonaj krótką kalibrację.</p>
+            <div class="gesture-meter"><span>GEST</span><strong id="recognized-gesture">OCZEKIWANIE</strong><small id="gesture-metric">Pinch —</small></div>
+          </div>
+        </section>
         <section class="side-card guide-card">
           <div class="side-head"><span>◇ GESTURE LANGUAGE</span><strong>V5</strong></div>
           <div class="gesture-item"><div class="gesture-glyph">☝</div><div><b>POINT / AIM</b><small>Wskazuj wybrane okno</small></div></div>
           <div class="gesture-item"><div class="gesture-glyph">🤏</div><div><b>PINCH / MOVE / THROW</b><small>Chwyć, przesuń i puść z rozpędem</small></div></div>
           <div class="gesture-item"><div class="gesture-glyph">🤏🤏</div><div><b>TWO-HAND TRANSFORM</b><small>Skalowanie i obrót okna</small></div></div>
-          <div class="gesture-item"><div class="gesture-glyph">🖐️</div><div><b>PALM / MENU</b><small>Przytrzymaj otwartą dłoń 0,7 s</small></div></div>
-          <div class="gesture-item"><div class="gesture-glyph">✊</div><div><b>FIST / PAUSE</b><small>Przytrzymaj 0,95 s; wznowienie dłonią</small></div></div>
+          <div class="gesture-item"><div class="gesture-glyph">🖐️</div><div><b>PALM / MENU</b><small>Przytrzymaj otwartą dłoń ok. 0,85 s</small></div></div>
+          <div class="gesture-item"><div class="gesture-glyph">✊</div><div><b>FIST / PAUSE</b><small>Przytrzymaj 1 s; wznowienie dłonią</small></div></div>
         </section>
         <section class="side-card small-help"><div class="side-head"><span>✦ TIPS & CONTROLS</span></div><p><b>Bez kamery:</b> chwyć nagłówek i przeciągnij. Kółkiem myszy skaluj okno; możesz też użyć menu.</p><p><b>Import:</b> zdjęcia i modele GLB otwierają się lokalnie. Niczego nie wysyłamy na serwer.</p><button class="helper-button" id="show-help" type="button">Pokaż skróty sterowania <span>↗</span></button></section>
       </aside>
@@ -135,6 +150,6 @@ Make them move.</textarea><div class="note-foot">AUTOSAVE / ON DEVICE <span>✦<
     <footer class="footer"><span>POSETRACKER / HOLODESK V5</span><span>Eksperymentalny interfejs przestrzenny · Kamera 2D estymuje ruch, nie mierzy głębokości · Bez sterowania rzeczywistymi urządzeniami</span></footer>
   </main>
 </div>
-<script type="module" src="./desk.js?v=5"></script>
+<script type="module" src="./desk.js?v=51"></script>
 </body>
 </html>
