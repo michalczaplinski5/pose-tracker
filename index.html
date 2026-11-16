@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0c1018">
   <meta name="description" content="PoseTracker — sterowanie wirtualną myszką za pomocą dłoni oraz analiza punktów ciała.">
-  <title>PoseTracker — Gesture Studio</title>
-  <link rel="stylesheet" href="./styles.css?v=3">
+  <title>PoseTracker V4 — Air Mouse Studio</title>
+  <link rel="stylesheet" href="./styles.css?v=4">
 </head>
 <body>
 <div class="app">
@@ -21,9 +21,9 @@
   <main>
     <div class="page-title">
       <div>
-        <div class="eyebrow"><span class="eyebrow-line"></span> GESTURE STUDIO / V3</div>
-        <h1>Twoja dłoń. <em>Twoja mysz.</em></h1>
-        <p>Przesuń palec wskazujący, aby sterować kursorem. Złącz go z kciukiem, aby kliknąć.</p>
+        <div class="eyebrow"><span class="eyebrow-line"></span> AIR MOUSE / V4</div>
+        <h1>Kontroluj gestami. <em>Bez dotyku.</em></h1>
+        <p>Wskazuj, klikaj, przeciągaj i przewijaj. Pięść zatrzymuje sterowanie, otwarta dłoń je wznawia.</p>
       </div>
       <div class="privacy"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 018 0v3" stroke="currentColor" stroke-width="1.8"/></svg>Obraz zostaje na urządzeniu</div>
     </div>
@@ -58,21 +58,56 @@
       <section class="card mouse-card" aria-labelledby="mouse-title">
         <div class="card-head">
           <div class="section-name"><span class="section-icon">⌖</span><h2 id="mouse-title">Mysz gestowa</h2></div>
-          <span class="tag tag-accent" id="gesture-state">Oczekiwanie</span>
+          <div class="gesture-actions"><span class="tag tag-accent" id="gesture-state">Oczekiwanie</span><button id="pause-toggle" type="button" class="mini-button" aria-pressed="false">⏸ Pauza</button></div>
         </div>
 
         <div class="mouse-body">
           <div class="mouse-instructions">
-            <div><span class="step-number">01</span><span><strong>Wskaż</strong><small>Ruszaj palcem wskazującym</small></span></div>
-            <div><span class="step-number">02</span><span><strong>Kliknij</strong><small>Złącz kciuk i wskazujący</small></span></div>
+            <div><span class="step-number">01</span><span><strong>Wskazuj</strong><small>Ruch palca = kursor</small></span></div>
+            <div><span class="step-number">02</span><span><strong>Wykonuj gesty</strong><small>Pinch · dwa palce · pięść</small></span></div>
+          </div>
+          <div class="demo-tabs" role="group" aria-label="Wybierz obszar ćwiczeń">
+            <button type="button" class="demo-tab active" data-demo="click" aria-pressed="true">Klikanie</button>
+            <button type="button" class="demo-tab" data-demo="drag" aria-pressed="false">Przeciąganie</button>
+            <button type="button" class="demo-tab" data-demo="scroll" aria-pressed="false">Przewijanie</button>
           </div>
 
           <div class="test-zone" id="workspace" aria-label="Obszar testowania wirtualnej myszki">
             <div class="zone-top"><span>STREFA TESTOWA</span><span id="click-count">0 kliknięć</span></div>
-            <div class="targets">
-              <button type="button" class="gesture-target" data-action="A"><b>A</b><small>Cel pierwszy</small></button>
-              <button type="button" class="gesture-target" data-action="B"><b>B</b><small>Cel drugi</small></button>
-              <button type="button" class="gesture-target" data-action="C"><b>C</b><small>Cel trzeci</small></button>
+            <div class="demo-view" id="demo-click">
+              <div class="targets">
+                <button type="button" class="gesture-target" data-action="A"><b>A</b><small>Cel pierwszy</small></button>
+                <button type="button" class="gesture-target" data-action="B"><b>B</b><small>Cel drugi</small></button>
+                <button type="button" class="gesture-target" data-action="C"><b>C</b><small>Cel trzeci</small></button>
+              </div>
+              <p class="demo-hint">🤏 Krótkie szczypnięcie = kliknięcie po rozdzieleniu palców</p>
+            </div>
+            <div class="demo-view" id="demo-drag" hidden>
+              <div class="drag-lane" id="drag-lane">
+                <div id="drag-card" class="drag-card" style="left:15%;top:50%">≡ <span>PRZECIĄGNIJ</span></div>
+                <div id="drop-zone" class="drop-zone"><span>◎</span> UPUŚĆ TUTAJ</div>
+              </div>
+              <p class="demo-hint">🤏 Przytrzymaj szczypnięcie przez 0,43 s, przesuń dłoń i puść</p>
+            </div>
+            <div class="demo-view" id="demo-scroll" hidden>
+              <div class="scroll-panel" id="scroll-area" tabindex="0" aria-label="Lista do przewijania gestami">
+                <p class="scroll-heading">Lista przykładowych poleceń</p>
+                <div>01 <strong>Wybór narzędzia</strong><span>Test</span></div>
+                <div>02 <strong>Pozycja Home</strong><span>Test</span></div>
+                <div>03 <strong>Tryb manualny</strong><span>Test</span></div>
+                <div>04 <strong>Odczyt czujników</strong><span>Test</span></div>
+                <div>05 <strong>Symulator TCP</strong><span>Test</span></div>
+                <div>06 <strong>Lista punktów</strong><span>Test</span></div>
+                <div>07 <strong>Diagnostyka</strong><span>Test</span></div>
+                <div>08 <strong>Raport</strong><span>Test</span></div>
+              </div>
+              <p class="demo-hint">✌️ Wyprostuj palec wskazujący i środkowy, przesuwaj dłoń w górę/dół</p>
+            </div>
+            <div id="calibration-overlay" class="calibration-overlay" hidden>
+              <div class="calibration-title">KALIBRACJA <strong id="calibration-step">1/4</strong></div>
+              <div class="calibration-cross" id="calibration-cross"></div>
+              <p id="calibration-prompt">Ustaw palec w lewym górnym rogu i wykonaj krótki pinch.</p>
+              <div class="calibration-buttons"><button type="button" id="calibration-capture" class="mini-button">Zapisz punkt</button><button type="button" id="calibration-cancel" class="mini-button">Anuluj</button></div>
             </div>
             <div class="zone-bottom" id="workspace-feedback">Pokaż dłoń, aby zobaczyć kursor</div>
             <div class="virtual-cursor" id="virtual-cursor" hidden aria-hidden="true"><span class="cursor-inner"></span></div>
@@ -82,6 +117,7 @@
             <span class="info-icon">✦</span>
             <span id="pointer-state">Sterowanie włączy się automatycznie po wykryciu dłoni.</span>
           </div>
+          <div class="gesture-guide"><span>🤏 Klik / chwyt</span><span>✌️ Scroll</span><span>✊ Pauza (0,85 s)</span><span>🖐️ Wznów (0,85 s)</span></div>
 
           <div class="telemetry">
             <div><small>DŁONIE</small><strong id="hands-count">0</strong></div>
@@ -103,9 +139,12 @@
           <label class="select-row"><span>Model sylwetki</span><select id="pose-model"><option value="lite" selected>Lite · szybki</option><option value="full">Full · dokładniejszy</option><option value="heavy">Heavy · wymagający</option></select></label>
         </div>
         <div class="settings-group">
-          <h3>Sterowanie</h3>
+          <h3>Precyzja i kalibracja</h3>
           <label class="select-row"><span>Aktywna dłoń</span><select id="control-hand"><option value="auto">Automatycznie</option><option value="Right">Prawa</option><option value="Left">Lewa</option></select></label>
-          <label class="select-row"><span>Wygładzanie <output id="smoothing-label">60%</output></span><input type="range" id="smoothing" min="0" max="90" value="60"></label>
+          <label class="select-row"><span>Stabilizacja <output id="smoothing-label">60%</output></span><input type="range" id="smoothing" min="0" max="100" value="60"></label>
+          <label class="select-row"><span>Czułość <output id="sensitivity-label">50%</output></span><input type="range" id="sensitivity" min="0" max="100" value="50"></label>
+          <label class="select-row"><span>Martwa strefa <output id="deadzone-label">0,3</output></span><input type="range" id="deadzone" min="0" max="3" step="0.1" value="0.3"></label>
+          <div class="calibration-settings"><button id="calibration-start" type="button" class="mini-button primary-mini">Kalibracja 4 punktów</button><button id="calibration-reset" type="button" class="mini-button">Reset</button><small id="calibration-status">Brak kalibracji — ustawienia domyślne</small></div>
           <label class="switch-row compact"><span>Odbicie lustrzane</span><input type="checkbox" id="mirror" checked></label>
           <label class="switch-row compact"><span>Połączenia szkieletu</span><input type="checkbox" id="show-lines" checked></label>
           <label class="switch-row compact"><span>Punkty orientacyjne</span><input type="checkbox" id="show-points" checked></label>
@@ -121,9 +160,9 @@
       <div class="bridge-actions"><button type="button" id="desktop-arm" disabled class="btn btn-primary">Uzbrój mysz</button><button type="button" id="desktop-disarm" disabled class="btn btn-outline">STOP</button><span id="desktop-state"></span></div>
     </section>
 
-    <div class="footnote">PoseTracker Gesture Studio · MediaPipe Tasks Vision · GitHub Pages <span>Analiza odbywa się na urządzeniu. Modele i biblioteki są pobierane z CDN.</span></div>
+    <div class="footnote">PoseTracker Air Mouse V4 · MediaPipe Tasks Vision · GitHub Pages <span>Analiza odbywa się na urządzeniu. Modele i biblioteki są pobierane z CDN.</span></div>
   </main>
 </div>
-<script type="module" src="./app.js?v=3"></script>
+<script type="module" src="./app.js?v=4"></script>
 </body>
 </html>
