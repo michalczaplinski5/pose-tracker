@@ -11,7 +11,7 @@ const ui = {
   inputState:id('input-state'), objectScale:id('object-scale'), scaleReadout:id('scale-readout'),
   handCount:id('hand-count'), inferenceFps:id('inference-fps'), handsOnline:id('hands-online'),
   gestureMode:id('gesture-mode'), activeObject:id('active-object'),
-  pause:id('pause-scene'), reset:id('reset-view'), topStatus:id('top-status'),
+  pause:id('pause-scene'), reset:id('reset-view'), topStatus:id('top-status'), topStatusText:id('top-status-text'),
   trackingState:id('tracking-state'),
   modelButtons:[...document.querySelectorAll('.object-button')]
 };
@@ -37,8 +37,7 @@ function cameraStatus(text,kind=''){
 }
 function setTop(active){
   ui.topStatus.classList.toggle('online',active);
-  ui.topStatus.lastElementChild && null;
-  ui.topStatus.textContent=active?'● HAND TRACKING ONLINE':'● SYSTEM READY';
+  ui.topStatusText.textContent=active?'HAND TRACKING ONLINE':'SYSTEM STANDBY';
   ui.signal.textContent=active?'TRACKING':'NO SIGNAL';
   ui.signal.classList.toggle('online',active);
 }
