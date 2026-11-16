@@ -159,3 +159,21 @@ Nie należy używać HoloDesk do sterowania rzeczywistymi robotami, maszynami an
 ### Testy
 
 GitHub Actions wykonuje \`node --test tests/*.test.mjs\`, sprawdzając automaty gestów i bezwładność V5, wcześniejsze gesty V4 i HoloLab oraz składnię modułów. Testy nie zastępują walidacji na kamerze i w docelowej przeglądarce.
+
+
+### HoloDesk V5.1 — łatwiejsze sterowanie dłonią
+
+Wersja V5.1 poprawia przede wszystkim obsługę kamery i rozpoznawanie gestów, nie tylko wygląd.
+
+- **Potwierdzanie pinch w czasie** i progi histerezy: pojedyncza błędna klatka nie powinna natychmiast chwytać lub upuszczać panelu. Zmniejsza to przypadkowe drgania.
+- **Łatwiejsze wskazywanie okien**: wybieranie najbliższego panelu w promieniu 64 pikseli, widoczne podświetlenie celu i etykieta kursora.
+- **Adaptacyjny filtr kursora**: wygładzanie przy nieruchomej dłoni i szybsza reakcja na zdecydowany ruch.
+- **Kalibracja dwóch punktów**: ustaw palec w wygodnym lewym górnym, następnie prawym dolnym rogu przestrzeni ruchu; zatwierdź szczypnięciem lub przyciskiem.
+- **Panel „Control Tuning”**: zakres ruchu, stabilizacja i łatwość chwytu. Wartości są zapisywane lokalnie w przeglądarce.
+- **Diagnostyka gestu na żywo**: widoczny rodzaj gestu i współczynnik pinch. Po utracie dłoni kursor jest ukrywany, a chwyt bezpiecznie przerywany.
+- **Lepsza detekcja przy częściowym zasłonięciu dłoni**: rozpoznawanie otwartej dłoni / pięści na podstawie kątów palców i tolerancja krótkiego zaniku śledzenia.
+- Kamera próbuje użyć rozdzielczości **960 × 540** (jeśli obsługuje) przy 30 kl./s; MediaPipe ładuje się na GPU, a jeśli niedostępne — CPU.
+
+**Praktyczny test:** włącz kamerę, skieruj wyprostowany palec na wybrane okno (powinno się podświetlić), zetknij kciuk z palcem wskazującym na krótką chwilę, przesuń dłoń i rozsuń palce. Jeśli kursor nie obejmuje całego pulpitu, wybierz **Kalibruj rękę** i zaznacz wygodny zakres ruchu. Jeśli gest pinch wykrywany jest za rzadko, zwiększ **Łatwość chwytu** do 80–90%.
+
+**Uwaga:** automatyczne testy syntetycznych punktów i Chromium nie zastępują oceny na rzeczywistym obrazie kamery. Jakość pozostaje zależna od oświetlenia, kadrowania dłoni i wydajności urządzenia.
