@@ -29,9 +29,9 @@ try{
   });
   await test('radial menu is clickable with mouse',async()=>{
     await page.locator('#menu-open').click();
-    assert.equal(await page.locator('#radial-menu').isVisible(),true);
+    assert.equal(await page.locator('.radial-action[data-command="notes"]').isVisible(),true);
     await page.locator('.radial-action[data-command="notes"]').click();
-    assert.equal(await page.locator('#radial-menu').isVisible(),false);
+    assert.equal(await page.locator('.radial-action[data-command="notes"]').isVisible(),false);
     assert.equal(await page.locator('[data-window="notes"]').isVisible(),true);
   });
   await test('floating windows move when dragging their header',async()=>{
