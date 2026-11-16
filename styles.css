@@ -198,3 +198,9 @@ output{color:var(--teal);font-size:11px;font-weight:700;margin-left:4px}
   .gesture-guide{gap:5px}.gesture-guide span{font-size:9px;padding:6px 8px}
   .calibration-overlay p{font-size:11px}
 }
+
+/* HoloLab shortcut — isolated from V4 interactions */
+.header-controls{display:flex;gap:13px;align-items:center}
+.holo-link{color:#9ff4de;background:#19382f;border:1px solid #386c5c;border-radius:8px;padding:9px 12px;text-decoration:none;font-weight:750;font-size:11px;white-space:nowrap;letter-spacing:.2px}
+.holo-link:hover{background:#2c6050;color:#fff}
+@media(max-width:600px){.header-controls{gap:7px}.holo-link{font-size:10px;padding:8px}.header-right{display:none}}
