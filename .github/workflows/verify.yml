@@ -27,3 +27,5 @@ jobs:
         run: node --input-type=module --check < app.js
       - name: Python bridge syntax
         run: python -m py_compile desktop_bridge.py
+      - name: Local bridge HTTP behavior and fail-safe tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
