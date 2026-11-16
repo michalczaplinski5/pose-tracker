@@ -71,7 +71,7 @@ try{
   await test('Three.js viewer initializes and can parse a local GLB',async()=>{
     // Wait for WebGL procedural object to become active, not a decorative fallback.
     await page.waitForFunction(()=>document.querySelector('#model-fallback')?.hidden===true,
-      {timeout:50_000});
+      undefined,{timeout:50_000});
     const json={
       asset:{version:'2.0'},
       scene:0,scenes:[{nodes:[0]}],nodes:[{mesh:0}],
@@ -98,7 +98,7 @@ try{
     bin.copy(glb,binHeader+8);
     await page.locator('#glb-input').setInputFiles({name:'triangle.glb',mimeType:'model/gltf-binary',buffer:glb});
     await page.waitForFunction(()=>document.querySelector('#model-file-label')?.textContent?.includes('TRIANGLE.GLB'),
-      {timeout:30_000});
+      undefined,{timeout:30_000});
     assert.match(await page.locator('#feedback').textContent(),/Wczytano model lokalnie/);
   });
   await test('legacy V4 and HoloLab remain available',async()=>{
