@@ -61,7 +61,7 @@ export class DeskGestureEngine {
     const pinchHands=[];
     for(const hand of hands){
       const was=this.pinch.get(hand.id)===true;
-      const pinched=hand.pinchRatio<(was?.62:.40);
+      const pinched=hand.pinchRatio<(was ? .62 : .40);
       this.pinch.set(hand.id,pinched);
       if(pinched)pinchHands.push(hand);
     }
