@@ -89,3 +89,27 @@ Dokumentacja:
 [MediaPipe Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker) ·
 [Pose Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) ·
 [PyAutoGUI](https://pyautogui.readthedocs.io/).
+
+---
+
+## HoloLab — sterowanie przestrzenne inspirowane filmowymi interfejsami
+
+**Otwórz:** https://michalczaplinski5.github.io/pose-tracker/holo.html
+
+To **osobny tryb eksperymentalny**. Air Mouse V4 nadal działa pod adresem głównym. HoloLab pokazuje 3D holograficzny rdzeń energetyczny lub uproszczony model ramienia robota (wizualizacja, nie model kinematyczny UR20).
+
+**Sterowanie dłonią (kamera):**
+
+- Jedna dłoń: wskaż obiekt i **złącz kciuk z palcem wskazującym** (pinch). Poruszaj dłonią, aby obracać obiekt. Rozsuń palce, aby puścić.
+- Dwie dłonie: wykonaj pinch **obiema dłońmi**. Oddalanie / zbliżanie dłoni zmienia skalę modelu; skręcanie pary dłoni obraca obiekt; przesuwanie obu rąk razem przemieszcza go.
+- Możesz też skierować kursor dłoni na holograficzny przycisk **ENERGY CORE** lub **ROBOT ARM** i wykonać pinch, aby przełączyć obiekt.
+- Przytrzymanie **pięści** przez ponad 0,85 s wstrzymuje rozpoznawanie manipulacji; po pauzie przytrzymanie **otwartej dłoni** wznawia. Jest też przycisk Pauza.
+- Klawisze: **1** / **2** przełączają obiekty, **R** resetuje położenie, **spacja** przełącza pauzę, **Esc** wstrzymuje sterowanie.
+
+**Bez kamery:** naciśnij lewy przycisk myszy na obiekcie i przeciągnij, aby obracać; kółko myszy zmienia skalę. Obsługiwane są także zdarzenia dotykowe przez interfejs wskaźnika przeglądarki.
+
+**Technicznie:** MediaPipe Hand Landmarker (po 21 punktów na każdą dłoń) oraz Three.js (scena WebGL). Moduł \`holo-gestures.mjs\` zawiera osobny automat gestów: śledzenie dwóch dłoni, histerezę szczypnięcia, sterowanie jedną lub dwiema dłońmi, pauzę i obsługę utraty śledzenia. \`holo-scene.mjs\` realizuje rendering i animację, a \`holo.js\` integruje kamerę i UI.
+
+**Ograniczenia:** jedna kamera RGB nie mierzy precyzyjnie ruchu dłoni w przestrzeni; skalowanie z dwóch dłoni jest mapowaniem odległości na **obrazie 2D**, a nie precyzyjnym pomiarem 3D. HoloLab nie łączy się z rzeczywistym robotem. Interakcja jest tylko demonstracją HMI, nie funkcją bezpieczeństwa.
+
+**Testy:** \`node --test tests/*.test.mjs\` sprawdza zarówno gesty V4, jak i HoloLab. GitHub Actions uruchamia testy oraz kontroluje składnię wszystkich modułów JavaScript i lokalnego mostu Python.
