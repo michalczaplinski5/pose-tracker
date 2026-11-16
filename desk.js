@@ -318,6 +318,12 @@ function onDeskEvent(event,now){
         ui.gestureState.textContent='RELEASED';
       }
       break;
+    case 'tracking-lost':
+      ui.cursor.hidden=true;calibration.lastRaw=null;pointerFilter.reset();
+      ui.gestureName.textContent='SZUKAM DŁONI';ui.gestureMetric.textContent='Pinch —';
+      for(const st of states.values())st.element.classList.remove('aimed');
+      announce('Utracono śledzenie. Pokaż dłoń ponownie, najlepiej na jasnym tle.');
+      break;
     case 'pause':
       closeMenu();grabbing=null;
       for(const st of states.values()){st.element.classList.remove('grabbed');st.inertia.stop();}
@@ -546,8 +552,8 @@ async function loadHandModel(){
   const assets=await vision.FilesetResolver.forVisionTasks(mediapipe+'/wasm');
   const opts=delegate=>({
     baseOptions:{modelAssetPath:handUrl,delegate},
-    runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.50,
-    minHandPresenceConfidence:.5,minTrackingConfidence:.50
+    runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.45,
+    minHandPresenceConfidence:.45,minTrackingConfidence:.45
   });
   try{handModel=await vision.HandLandmarker.createFromOptions(assets,opts('GPU'));}
   catch(e){
@@ -576,7 +582,7 @@ async function startCamera(){
     if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia)
       throw new Error('Kamera wymaga HTTPS i zgody w przeglądarce.');
     const s=await navigator.mediaDevices.getUserMedia({
-      audio:false,video:{width:{ideal:640},height:{ideal:480},frameRate:{ideal:30},facingMode:{ideal:'user'}}
+      audio:false,video:{width:{ideal:960},height:{ideal:540},frameRate:{ideal:30},facingMode:{ideal:'user'}}
     });
     if(ticket!==cameraEpoch){s.getTracks().forEach(t=>t.stop());return;}
     stream=s;ui.cam.srcObject=s;
@@ -690,10 +696,10 @@ function showHelp(){
   const dialog=document.createElement('dialog');
   dialog.className='help-dialog';
   dialog.innerHTML='<h2>HoloDesk — sterowanie</h2>'+
-    '<p>🖐️ <b>Otwarta dłoń przez 0,7 s:</b> pokaż menu kołowe</p>'+
+    '<p>🖐️ <b>Otwarta dłoń przez 0,85 s:</b> pokaż menu kołowe</p>'+
     '<p>🤏 <b>Pinch:</b> chwyć panel, przesuwaj i puść — rozpęd nada bezwładność</p>'+
     '<p>🤏🤏 <b>Obie dłonie:</b> skalowanie oraz obrót aktywnego okna</p>'+
-    '<p>✊ <b>Pięść przez 0,95 s:</b> pauza; otwarta dłoń przez 0,9 s — wznowienie</p>'+
+    '<p>✊ <b>Pięść przez 1 s:</b> pauza; otwarta dłoń przez 0,9 s — wznowienie</p>'+
     '<p>🖱️ <b>Bez kamery:</b> przeciągaj za nagłówki, kółkiem skaluj okna.</p>'+
     '<p><b>Skróty:</b> M — menu, P — pauza, R — reset układu, Esc — zamknij menu.</p>';
   const btn=document.createElement('button');btn.type='button';btn.textContent='Zamknij';
