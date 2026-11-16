@@ -1,4 +1,4 @@
-name: Verify PoseTracker V4
+name: Verify PoseTracker V4 + HoloLab
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   tests:
-    name: Gesture engine, app and bridge checks
+    name: Gesture engines, HoloLab, app and bridge
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,9 +22,14 @@ jobs:
         with:
           python-version: '3.12'
       - name: Gesture behavior unit tests
-        run: node --test tests/engine.test.mjs
+        run: node --test tests/*.test.mjs
       - name: JavaScript module syntax
         run: node --input-type=module --check < app.js
+      - name: HoloLab module syntax
+        run: |
+          node --input-type=module --check < holo.js
+          node --input-type=module --check < holo-scene.mjs
+          node --input-type=module --check < holo-gestures.mjs
       - name: Python bridge syntax
         run: python -m py_compile desktop_bridge.py
       - name: Local bridge HTTP behavior and fail-safe tests
