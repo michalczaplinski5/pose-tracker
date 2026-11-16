@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070d16">
+  <meta name="description" content="PoseTracker HoloLab — przestrzenne sterowanie modelami 3D gestami dłoni, inspirowane filmowym interfejsem holograficznym.">
+  <title>HoloLab — PoseTracker Spatial Control</title>
+  <link rel="stylesheet" href="./holo.css?v=1">
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <a class="brand" href="./"><span class="brand-icon">✳</span><strong>pose<span>tracker</span></strong><i>/</i><b>HOLOLAB</b></a>
+    <nav class="header-right">
+      <a href="./" class="back-link">↗ Air Mouse V4</a>
+      <span class="top-status" id="top-status"><span class="led"></span> SYSTEM OFFLINE</span>
+    </nav>
+  </header>
+  <main>
+    <div class="intro">
+      <div><div class="eyebrow"><span>EXPERIMENT 01</span> / SPATIAL HUMAN–MACHINE INTERFACE</div>
+        <h1>Manipuluj przestrzenią <em>gestem dłoni.</em></h1>
+        <p>Chwyć obiekt wirtualnie, obracaj go jedną ręką i skaluj dwiema. Bez kontrolera i bez podłączania robota.</p>
+      </div>
+      <span class="privacy">◈ LOCAL PROCESSING</span>
+    </div>
+
+    <section class="main-grid">
+      <div class="scene-panel">
+        <div class="scene-top">
+          <div class="heading"><span class="cyan-diamond">◇</span><span>HOLOGRAPHIC WORKSPACE</span><small>3D · LIVE</small></div>
+          <div class="scene-tools">
+            <button type="button" id="reset-view" title="Resetuj położenie i skalę">↺ RESET</button>
+            <button type="button" id="pause-scene" aria-pressed="false">Ⅱ PAUZA</button>
+          </div>
+        </div>
+        <div id="scene" class="scene" aria-label="Interaktywny model 3D">
+          <canvas id="three-canvas" aria-label="Obiekt 3D sterowany gestami lub myszą"></canvas>
+          <div class="scene-vignette" aria-hidden="true"></div>
+          <div class="scene-corner tl">CAM 01 / SPATIAL</div>
+          <div class="scene-corner tr">RENDER: <span id="render-status">INITIALIZING</span></div>
+          <div class="scene-corner bl">GESTURE INPUT <span id="input-state">WAITING</span></div>
+          <div class="scene-corner br" id="object-scale">SCALE 1.00×</div>
+          <div class="axis-gizmo" aria-hidden="true"><b>X</b><b>Y</b><b>Z</b></div>
+          <div id="scene-pointer" class="scene-pointer" hidden><span class="cross-v"></span><span class="cross-h"></span><i>HAND TARGET</i></div>
+          <div class="object-picker">
+            <span>SELECT OBJECT</span>
+            <button type="button" class="object-button active" data-model="core"><b>01</b> ENERGY CORE</button>
+            <button type="button" class="object-button" data-model="robot"><b>02</b> ROBOT ARM</button>
+          </div>
+          <div class="scene-error" id="scene-error" hidden><strong>Nie udało się uruchomić WebGL.</strong><p id="scene-error-text">Sprawdź wsparcie WebGL i połączenie z siecią.</p></div>
+        </div>
+        <div class="scene-bottom">
+          <div class="object-data"><span class="small-label">ACTIVE OBJECT</span><strong id="active-object">ENERGY CORE / H-01</strong></div>
+          <div class="object-data"><span class="small-label">INTERACTION MODE</span><strong id="gesture-mode">MOUSE / TOUCH READY</strong></div>
+          <div class="object-data"><span class="small-label">HAND TRACKING</span><strong id="hands-online">0 HANDS</strong></div>
+        </div>
+      </div>
+
+      <aside class="side-stack">
+        <section class="side-panel camera-panel">
+          <div class="panel-heading"><span>LIVE CAMERA FEED</span><span class="signal" id="camera-signal">NO SIGNAL</span></div>
+          <div class="camera-stage" id="camera-stage">
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="hands-overlay"></canvas>
+            <div class="camera-empty" id="camera-empty"><div class="camera-ring">✧</div><strong>Camera standby</strong><small>Włącz kamerę, aby przejąć sterowanie</small></div>
+            <div class="scanline"></div>
+          </div>
+          <div class="camera-actions">
+            <button type="button" id="start-camera" class="primary-action">◉ AKTYWUJ KAMERĘ</button>
+            <button type="button" id="stop-camera" class="secondary-action" hidden>■ WYŁĄCZ KAMERĘ</button>
+            <span id="camera-fps">— FPS</span>
+          </div>
+          <p class="camera-feedback" id="camera-feedback" role="status" aria-live="polite">Obiekt 3D można również obracać zwykłą myszką.</p>
+        </section>
+
+        <section class="side-panel guide-panel">
+          <div class="panel-heading"><span>GESTURE COMMANDS</span><span class="signal ready">REFERENCE</span></div>
+          <div class="gesture-grid">
+            <div class="gesture-cell"><span class="gesture-symbol">☝</span><div><b>WSKAZYWANIE</b><small>Pozycja kursora w przestrzeni</small></div></div>
+            <div class="gesture-cell"><span class="gesture-symbol">🤏</span><div><b>JEDEN PINCH</b><small>Chwyt i obrót obiektu</small></div></div>
+            <div class="gesture-cell"><span class="gesture-symbol">✋</span><div><b>DWA PINCHE</b><small>Skaluj, obracaj i przesuwaj</small></div></div>
+            <div class="gesture-cell"><span class="gesture-symbol">✊</span><div><b>PIĘŚĆ / DŁOŃ</b><small>Przytrzymaj, aby pauzować / wznowić</small></div></div>
+          </div>
+          <div class="hint"><b>TEST BEZ KAMERY</b><span>Przeciągnij obiekt myszą, aby obrócić. Kółko myszy skaluje model.</span></div>
+        </section>
+
+        <section class="side-panel telemetry-panel">
+          <div class="panel-heading"><span>SYSTEM TELEMETRY</span><span class="signal ready" id="tracking-state">IDLE</span></div>
+          <div class="telemetry"><div><span>DETECTED HANDS</span><b id="hand-count">00</b></div><div><span>INPUT FPS</span><b id="inference-fps">—</b></div><div><span>OBJECT SCALE</span><b id="scale-readout">1.00×</b></div></div>
+        </section>
+      </aside>
+    </section>
+
+    <div class="bottom-note"><span>POSETRACKER / HOLOLAB PROTOTYPE</span><p>Interfejs inspirowany filmową manipulacją hologramami. Kamera 2D estymuje ruch — nie jest to precyzyjny system śledzenia przestrzennego ani sterowanie prawdziwym robotem.</p></div>
+  </main>
+</div>
+<script type="module" src="./holo.js?v=1"></script>
+</body>
+</html>
