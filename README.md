@@ -1,69 +1,91 @@
-# PoseTracker — Gesture Studio
+# PoseTracker V4 — Air Mouse Studio
 
-Aplikacja do sterowania wirtualnym kursorem dłonią w przeglądarce. Model **MediaPipe Hand Landmarker** śledzi 21 punktów na każdej dłoni. Przesuwasz palec wskazujący, aby poruszać kursorem, i łączysz go z kciukiem, aby kliknąć.
+Live demo: **https://michalczaplinski5.github.io/pose-tracker/?v=4**
 
-**Strona:** https://michalczaplinski5.github.io/pose-tracker/
+Interfejs HMI oparty na detekcji dłoni MediaPipe. Działa jako **wirtualna mysz w przeglądarce** bez logowania, serwera aplikacyjnego i wysyłania obrazu. Można też uruchomić opcjonalną integrację z myszą Windows lokalnie.
 
-## Tryb 1: w przeglądarce (bez instalacji)
+## Wersja 4 — funkcje
 
-1. Otwórz stronę w Chrome lub Edge na komputerze.
-2. Kliknij **Uruchom kamerę** i przyznaj dostęp.
-3. Poczekaj na napis **Śledzenie aktywne**. Przy pierwszym użyciu pobiera się biblioteka i model.
-4. Ustaw dłoń w kadrze i przesuwaj palec wskazujący. Turkusowy kursor będzie poruszał się po strefie testowej po prawej.
-5. Naprowadź kursor na **A**, **B** lub **C**. Złącz czubki kciuka i palca wskazującego na ok. 0,1 s — nastąpi kliknięcie. Rozsuń palce przed kolejnym kliknięciem.
-6. Kliknij **Ustawienia zaawansowane**, aby włączyć dodatkowo sylwetkę (33 punkty) lub twarz (478 punktów), wybrać dłoń i zmienić wygładzanie.
+| Gest | Efekt w aplikacji |
+|---|---|
+| Ruch palca wskazującego | Porusza kursorem w panelu testowym |
+| Krótki pinch (kciuk + wskazujący) i puszczenie | Kliknięcie w zakładce **Klikanie** |
+| Pinch trzymany > 430 ms, przesunięcie i puszczenie | Chwyt, przeciągnięcie i puszczenie karty w zakładce **Przeciąganie** |
+| ✌️ Wskazujący + środkowy wyprostowane, pozostałe zgięte | Przewijanie listy w zakładce **Przewijanie** |
+| ✊ Pięść trzymana > 850 ms | Pauza sterowania |
+| 🖐️ Otwarta dłoń trzymana > 850 ms | Wznowienie sterowania |
+| Przycisk **Pauza** lub klawisz **P** | Ręczna pauza/wznowienie |
+| Escape | Pauza i rozbrojenie myszki systemowej |
 
-**Ważne:** na GitHub Pages jest to myszka **tylko wewnątrz pola testowego na tej stronie**. Zwykła strona WWW nie może sterować kursorem całego Windowsa.
+Gesty rozpoznawane są z punktów dłoni, bez dodatkowego ciężkiego modelu klasyfikatora. **Kliknięcie jest emitowane przy rozłączeniu palców**, więc przytrzymanie nie generuje przypadkowego kliku. Debounce zabezpiecza przed wielokrotnymi kliknięciami.
 
-## Co się zmieniło w V3
+### Kalibracja 4 punktów
 
-- Jednoznaczny przepływ: **kamera → wykrycie dłoni → ruch kursora → kliknięcie**.
-- Śledzenie dłoni włącza się automatycznie — żadnego ukrytego przełącznika sterowania.
-- **Hand Landmarker jest jedynym modelem ładowanym domyślnie.** To skraca start i redukuje obciążenie przeglądarki.
-- Model sylwetki i model twarzy ładowane są dopiero po włączeniu w ustawieniach.
-- Wyraźne komunikaty etapów uruchamiania i błędów kamery.
-- Regulowane wygładzanie kursora, histereza szczypnięcia, blokowanie wielokrotnych kliknięć.
-- Układ kamery i nakładki canvas korzysta z tego samego `object-fit: contain`, aby rysunek pokrywał się z obrazem.
-- Wprowadzone ograniczenie częstotliwości wnioskowania do ok. 25 Hz.
+1. Uruchom kamerę i otwórz **Ustawienia zaawansowane → Kalibracja 4 punktów**.
+2. Ustaw dłoń w pozycji, w której chcesz mapować kursor na **lewy górny róg** panelu. Wykonaj krótki pinch i puść albo kliknij **Zapisz punkt**.
+3. Powtórz dla prawego górnego, lewego dolnego i prawego dolnego narożnika.
+4. Po poprawnej kalibracji zakres współrzędnych zostaje zapisany w \`localStorage\` w bieżącej przeglądarce. Dla odbicia lustrzanego i zwykłego zakresy są oddzielne.
+5. Przycisk **Reset** usuwa kalibrację dla aktualnej orientacji.
 
-## Tryb 2: prawdziwa myszka Windows (eksperymentalny)
+Kalibracja jest osiowa (mapuje średnie granice X/Y), więc nie zastępuje pełnej kalibracji homograficznej systemu wizyjnego.
 
-Tryb lokalny wymaga Pythona i połączenia z osobnym programem na tym samym komputerze. Nie działa na zdalnej stronie GitHub Pages.
+### Stabilizacja
 
-1. Pobierz repozytorium jako ZIP, rozpakuj i otwórz PowerShell w katalogu projektu.
-2. Zainstaluj zależność:
+Moduł \`gesture-engine.mjs\` używa wariantu filtru **One Euro** z adaptacyjną charakterystyką, zależną od prędkości ruchu. Dostępna jest regulacja stabilizacji, czułości i martwej strefy. Po utracie dłoni filtr resetuje się, aby uniknąć skoku kursora.
 
-   ```powershell
-   py -m pip install -r requirements.txt
-   ```
+### Opcjonalna detekcja
 
-3. Uruchom:
+Domyślnie wczytywany jest tylko **Hand Landmarker (21 × 2 punkty)**. W ustawieniach można dołączyć Pose Landmarker (33 punkty sylwetki, modele Lite/Full/Heavy) i Face Landmarker (478 punktów twarzy). Dodatkowe modele obniżają wydajność na słabszych urządzeniach.
 
-   ```powershell
-   py desktop_bridge.py
-   ```
+## Uruchomienie na Windows — prawdziwa myszka systemowa
 
-4. Otwórz **http://127.0.0.1:8765**.
-5. Uruchom kamerę, sprawdź działanie wskaźnika w polu testowym, a następnie świadomie kliknij **Uzbrój mysz**.
+**Uwaga:** tryb GitHub Pages steruje tylko przyciskami i elementami w obrębie aplikacji. Zwykła strona WWW nie może sterować kursorem systemowym.
 
-Most działa na **127.0.0.1** i wymaga uzbrojenia. Awaryjnie można kliknąć STOP, nacisnąć Esc na aktywnej stronie lub zatrzymać serwer Ctrl+C. PyAutoGUI posiada również własny mechanizm failsafe.
+Jeżeli chcesz sterować pulpitem Windows:
 
-Nie używaj prototypu do sterowania rzeczywistym robotem lub realizacji funkcji bezpieczeństwa. Sterowanie robotem wymaga osobnego projektu interfejsu, oceny ryzyka i niezależnych zabezpieczeń.
+1. Pobierz repozytorium ZIP i rozpakuj folder.
+2. Otwórz PowerShell w rozpakowanym katalogu.
+3. Zainstaluj zależności: \`py -m pip install -r requirements.txt\`.
+4. Uruchom: \`py desktop_bridge.py\`.
+5. Otwórz **http://127.0.0.1:8765** (nie adres GitHub Pages).
+6. Uruchom kamerę, sprawdź gesty i kliknij **Uzbrój mysz** w dodatkowym panelu.
+
+Tryb lokalny obsługuje kliknięcie, \`mouseDown\` / \`mouseUp\` (przeciąganie) oraz scroll. Polecenia przesyłane są wyłącznie na \`127.0.0.1\`.
+
+**Bezpieczeństwo:** most jest domyślnie rozbrojony i wymaga ręcznego uzbrojenia. STOP, Escape, zamknięcie/ukrycie strony lub utrata dłoni rozbraja most. Serwer ma watchdog: po ok. 2 s bez komend rozbraja się i zwalnia lewy przycisk myszy, nawet gdy strona przestanie wysyłać żądania. Ustawiony jest również PyAutoGUI \`FAILSAFE\` (róg ekranu); Ctrl+C zatrzymuje skrypt.
+
+To prototyp HMI **nieprzeznaczony do bezpośredniego ruchu prawdziwego robota ani do realizacji funkcji bezpieczeństwa**. Integrację z robotem należy zaprojektować jako odrębny, nadzorowany i oceniony pod względem ryzyka moduł.
 
 ## Testy
 
-Statycznie sprawdzono składnię JavaScript i powiązania elementów HTML. W kontrolowanym teście z atrapą modelu MediaPipe zweryfikowano: uruchomienie kamery, śledzenie dłoni, przesunięcie kursora, kliknięcie przycisku oraz obsługę utraty śledzenia i zatrzymania kamery.
+W repozytorium działają automatyczne testy:
 
-**Nie zastępuje to testu end-to-end na fizycznej kamerze**, rzeczywistym modelu AI i docelowej przeglądarce.
+- **17 testów jednostkowych** logiki w \`tests/engine.test.mjs\`: rozpoznawanie gestów, próg i histereza pinch, krótki klik, przeciąganie, przewijanie, pauza i wznowienie, kalibracja oraz filtracja sygnału.
+- **GitHub Actions** (\`.github/workflows/verify.yml\`) uruchamia testy na Node 22, sprawdza składnię \`app.js\` i kompilację składniową \`desktop_bridge.py\`.
+- Dodatkowo wykonano symulację przepływu interfejsu z atrapą kamery i modelu MediaPipe: uruchamianie, kliknięcie, zmiana zakładek, przeciąganie, scroll, pauza, kalibracja i zatrzymanie.
 
-## Struktura
+Lokalnie:
 
-- `index.html` — interfejs.
-- `styles.css` — wygląd strony.
-- `app.js` — logika MediaPipe i gestów.
-- `desktop_bridge.py` — opcjonalny lokalny most do kursora systemowego.
-- `requirements.txt` — pakiet PyAutoGUI.
+\`\`\`bash
+node --test tests/engine.test.mjs
+node --input-type=module --check < app.js
+python -m py_compile desktop_bridge.py
+\`\`\`
 
-Technologie: JavaScript, MediaPipe Tasks Vision, Canvas 2D, opcjonalnie Python/PyAutoGUI. Bez backendu w GitHub Pages.
+Testy syntetyczne nie zastępują testu end-to-end na rzeczywistym obrazie z kamery i systemie Windows.
 
-Dokumentacja: [Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker), [Pose Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker), [Face Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker).
+## Architektura
+
+- \`index.html\` — responsywny panel Gesture Studio.
+- \`styles.css\` — wizualizacje, zakładki i interakcje.
+- \`app.js\` — obsługa kamery, MediaPipe, interfejsu i kolejki poleceń lokalnej myszki.
+- \`gesture-engine.mjs\` — czyste, testowalne obliczenia gestów, filtrowanie, kalibracja i automat stanów.
+- \`desktop_bridge.py\` — opcjonalny most do lokalnej myszy.
+- \`tests/engine.test.mjs\` — testy jednostkowe.
+
+Moduły MediaPipe/WebAssembly i modele pobierane są z CDN i Google Cloud Storage przy pierwszym uruchomieniu. Analiza obrazu jest lokalna, bez wysyłania wideo na serwer.
+
+Dokumentacja:
+[MediaPipe Hand Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker) ·
+[Pose Landmarker](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker) ·
+[PyAutoGUI](https://pyautogui.readthedocs.io/).
