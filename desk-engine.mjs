@@ -88,6 +88,7 @@ export class DeskGestureEngine{
     this.dualPrev=null;this.prevTime=0;this.lastMotion=0;
     this.v={x:0,y:0};this.pinch=new Map();this.transitions=new Map();
     this.handSeen=new Map();this.lastSeen=-Infinity;this.lastPair=-Infinity;
+    this.tracking=false;
     this.openSince=null;this.lastOpen=-Infinity;this.fistSince=null;
     this.lastFist=-Infinity;this.resumeSince=null;this.lastResume=-Infinity;
     this.menuLatched=false;this.menuCooldown=-Infinity;
@@ -142,10 +143,13 @@ export class DeskGestureEngine{
     if(!hands.length){
       if(now-this.lastSeen>300){
         events.push(...this.end(true));
+        if(this.tracking)events.push({type:'tracking-lost'});
+        this.tracking=false;
         this.openSince=null;this.resumeSince=null;this.fistSince=null;this.menuLatched=false;
       }
       return events;
     }
+    this.tracking=true;
     this.lastSeen=now;
     const pinchHands=[];
     for(const hand of hands){
