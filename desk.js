@@ -126,14 +126,6 @@ function attachWindow(st){
     event.preventDefault();event.stopPropagation();
     beginMouseDrag(st,event);
   });
-  st.element.addEventListener('wheel',event=>{
-    // Wheel on a window scales the floating panel, except editable controls.
-    if(event.target.closest('textarea'))return;
-    event.preventDefault();
-    selectWindow(st.id);
-    st.scale=clamp(st.scale*Math.exp(-event.deltaY*.0011),.55,1.75);
-    renderWindow(st);
-  },{passive:false});
   st.element.addEventListener('keydown',event=>{
     if(event.target.closest('textarea'))return;
     if(event.key==='Enter'){selectWindow(st.id);event.preventDefault();}
@@ -668,6 +660,19 @@ function installEvents(){
   ui.menuOpen.addEventListener('click',()=>menuOpen?closeMenu():showMenu());
   ui.reset.addEventListener('click',resetLayout);
   ui.help.addEventListener('click',showHelp);
+  // Handle wheel at the 3D workspace level: overlapping transformed windows
+  // and nested WebGL canvases otherwise may swallow the browser wheel target.
+  ui.workspace.addEventListener('wheel',event=>{
+    if(event.target.closest('textarea'))return;
+    event.preventDefault();
+    const windowElement=event.target.closest('.spatial-window');
+    const candidate=windowElement?states.get(windowElement.dataset.window):null;
+    const st=(candidate&&candidate.visible?candidate:null)||states.get(activeId);
+    if(!st||!st.visible)return;
+    selectWindow(st.id);
+    st.scale=clamp(st.scale*Math.exp(-event.deltaY*.0011),.55,1.75);
+    renderWindow(st);
+  },{passive:false,capture:true});
   for(const button of ui.radial.querySelectorAll('button')){
     button.addEventListener('click',()=>activateMenu(button.dataset.command));
   }
