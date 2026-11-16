@@ -201,3 +201,26 @@ test('pointer smoothing reduces jitter and resets after tracking gap',()=>{
   const b=f.update({x:.8,y:.8},1600,{smooth:85});
   assert.ok(b.x>.85);
 });
+
+test('tracking lost is signalled once and resets on reacquisition',()=>{
+  const e=new DeskGestureEngine();
+  e.update([P('Right',.55,.45,.2)],1000);
+  const lost=e.update([],1400);
+  assert.ok(types(lost).includes('tracking-lost'));
+  assert.ok(!types(e.update([],1480)).includes('tracking-lost'));
+  e.update([P('Right',.55,.45,.2)],2000);
+  assert.ok(types(e.update([],2360)).includes('tracking-lost'));
+});
+test('the pinch threshold is adjustable for different hand sizes',()=>{
+  const e=new DeskGestureEngine();
+  e.setConfig({start:.82,end:1.14,onMs:60});
+  assert.ok(!types(e.update([P('Right',.5,.5,.72)],1000)).includes('press'));
+  assert.ok(types(e.update([P('Right',.5,.5,.72)],1090)).includes('press'));
+});
+test('open-hand menu hold tolerates one short occluded frame',()=>{
+  const e=new DeskGestureEngine();
+  const palm=P('Right',.5,.5,1.4,{open:true});
+  e.update([palm],1000);
+  e.update([P('Right',.5,.5,1.4)],1400);
+  assert.ok(types(e.update([palm],1920)).includes('menu'));
+});
