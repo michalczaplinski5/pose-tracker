@@ -46,9 +46,14 @@ export class DeskPointerFilter{
     const reach=clamp(Number(options.reach??72),45,100)/100;
     const smooth=clamp(Number(options.smooth??55),0,100)/100;
     const half=reach/2;
+    const profile=options.profile;
+    const defaultBounds={minX:.5-half,maxX:.5+half,minY:.5-half,maxY:.5+half};
+    const valid=profile&&[profile.minX,profile.maxX,profile.minY,profile.maxY].every(Number.isFinite)&&
+      profile.maxX-profile.minX>.12&&profile.maxY-profile.minY>.12;
+    const bounds=valid?profile:defaultBounds;
     const desired={
-      x:clamp((raw.x-(.5-half))/reach,.02,.98),
-      y:clamp((raw.y-(.5-half))/reach,.025,.975)
+      x:clamp((raw.x-bounds.minX)/(bounds.maxX-bounds.minX),.02,.98),
+      y:clamp((raw.y-bounds.minY)/(bounds.maxY-bounds.minY),.025,.975)
     };
     if(!this.point||now-this.last>400){
       this.last=now;this.point=desired;return {...desired};
@@ -82,7 +87,7 @@ export class DeskGestureEngine{
     this.paused=false;this.mode='idle';this.primary=null;this.previous=null;
     this.dualPrev=null;this.prevTime=0;this.lastMotion=0;
     this.v={x:0,y:0};this.pinch=new Map();this.transitions=new Map();
-    this.lastSeen=-Infinity;this.lastPair=-Infinity;
+    this.handSeen=new Map();this.lastSeen=-Infinity;this.lastPair=-Infinity;
     this.openSince=null;this.lastOpen=-Infinity;this.fistSince=null;
     this.lastFist=-Infinity;this.resumeSince=null;this.lastResume=-Infinity;
     this.menuLatched=false;this.menuCooldown=-Infinity;
@@ -143,10 +148,17 @@ export class DeskGestureEngine{
     }
     this.lastSeen=now;
     const pinchHands=[];
-    for(const hand of hands)if(this.stablePinch(hand,now))pinchHands.push(hand);
-    for(const id of [...this.pinch.keys()]){
-      if(!hands.some(h=>h.id===id)&&now-this.lastSeen>300){
-        this.pinch.delete(id);this.transitions.delete(id);
+    for(const hand of hands){
+      const last=this.handSeen.get(hand.id);
+      if(last!==undefined&&now-last>260){
+        this.pinch.delete(hand.id);this.transitions.delete(hand.id);
+      }
+      this.handSeen.set(hand.id,now);
+      if(this.stablePinch(hand,now))pinchHands.push(hand);
+    }
+    for(const id of [...this.handSeen.keys()]){
+      if(now-this.handSeen.get(id)>280){
+        this.handSeen.delete(id);this.pinch.delete(id);this.transitions.delete(id);
       }
     }
     const lead=pinchHands[0]||hands.find(h=>h.id==='Right')||hands[0];
