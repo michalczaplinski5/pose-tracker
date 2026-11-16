@@ -48,11 +48,12 @@ try{
   });
   await test('mouse wheel scales the active window',async()=>{
     const el=page.locator('[data-window="model"]');
+    // The previously dragged gallery may be frontmost; explicitly focus the model.
+    await el.locator('.window-chrome').click({position:{x:40,y:18}});
     const prev=await el.evaluate(node=>node.style.transform);
-    const box=await el.boundingBox();
-    assert.ok(box);
-    await page.mouse.move(box.x+box.width/2,box.y+22);
+    await el.locator('.window-chrome').hover({position:{x:40,y:18}});
     await page.mouse.wheel(0,-170);
+    await page.waitForTimeout(100);
     const after=await el.evaluate(node=>node.style.transform);
     assert.notEqual(after,prev,'Transform should change after zoom');
   });
