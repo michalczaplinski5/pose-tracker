@@ -38,3 +38,33 @@ jobs:
         run: python -m py_compile desktop_bridge.py
       - name: Local bridge HTTP behavior and fail-safe tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+  browser-smoke:
+    name: HoloDesk visual and interaction smoke test
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Run HoloDesk browser interaction tests
+        run: |
+          python3 -m http.server 8767 --bind 127.0.0.1 > /tmp/holodesk-http.log 2>&1 &
+          sleep 2
+          node tests/desk.browser.mjs
+      - name: Upload HoloDesk screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: holodesk-v5-browser-preview
+          path: artifacts/holodesk-v5-desktop.png
+          if-no-files-found: ignore
