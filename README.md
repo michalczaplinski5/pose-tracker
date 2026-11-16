@@ -113,3 +113,49 @@ To **osobny tryb eksperymentalny**. Air Mouse V4 nadal działa pod adresem głó
 **Ograniczenia:** jedna kamera RGB nie mierzy precyzyjnie ruchu dłoni w przestrzeni; skalowanie z dwóch dłoni jest mapowaniem odległości na **obrazie 2D**, a nie precyzyjnym pomiarem 3D. HoloLab nie łączy się z rzeczywistym robotem. Interakcja jest tylko demonstracją HMI, nie funkcją bezpieczeństwa.
 
 **Testy:** \`node --test tests/*.test.mjs\` sprawdza zarówno gesty V4, jak i HoloLab. GitHub Actions uruchamia testy oraz kontroluje składnię wszystkich modułów JavaScript i lokalnego mostu Python.
+
+
+---
+
+## V5 — HoloDesk: przestrzenny pulpit gestowy
+
+**Uruchom:** https://michalczaplinski5.github.io/pose-tracker/desk.html
+
+HoloDesk to osobny eksperyment (pliki \`desk.html\`, \`desk.css\`, \`desk.js\`, \`desk-engine.mjs\`), który **nie zastępuje** V4 Air Mouse ani wcześniejszego HoloLab.
+
+### Funkcje
+
+- Pulpit **CSS 3D** z czterema przestrzennymi oknami: galeria, podgląd 3D, notatki i statystyki.
+- Obracanie/powiększanie i przesuwanie okien myszką, a po uruchomieniu kamery także **chwytanie i przemieszczanie gestem szczypnięcia**.
+- **Dwa jednoczesne szczypnięcia obiema dłońmi:** skalowanie i obracanie wybranego okna oraz przesuwanie środka między dłońmi.
+- **Bezwładność po puszczeniu**: okno kontynuuje ruch i stopniowo wyhamowuje, z ograniczeniem do obszaru roboczego.
+- **Otwarta dłoń przez 0,7 sekundy:** menu kołowe do wybierania lub przywracania okien, resetowania układu i zamykania menu.
+- **Pięść przez 0,95 sekundy:** pauza; otwarta dłoń przez 0,9 sekundy wznawia gesty. Przycisk Pauza działa niezależnie.
+- **Import JPG/PNG/WebP/GIF**: pliki z lokalnego dysku pojawiają się jako nowe, ruchome okna. Maksymalnie 10 zdjęć po 18 MB każde.
+- **Import samodzielnego GLB** (do 40 MB): wizualizacja 3D w oknie przy użyciu Three.js i GLTFLoader. Domyślnie okno zawiera proceduralny model testowy. Wczytany model można obracać myszą wewnątrz okna.
+- Notatki automatycznie zapisują się w lokalnym \`localStorage\`; zdjęcia i modele **nie są wysyłane** do serwera i nie zostają zachowane między sesjami.
+- Można przeciągnąć zdjęcie lub plik GLB z Eksploratora na pulpit.
+- Wersja bez kamery jest pełnoprawnym demonstratorem: przeciąganie okien za nagłówki, skalowanie kółkiem, wybieranie menu, otwieranie i zamykanie paneli.
+
+### Szybki test
+
+1. Otwórz \`desk.html\`.
+2. Bez włączania kamery przeciągnij okno za nagłówek. Puść z rozpędem, aby zobaczyć bezwładność.
+3. Najedź myszką na okno i użyj kółka, aby zmienić jego rozmiar.
+4. Kliknij **Menu gestowe** i wybierz panel.
+5. Dodaj zdjęcie i plik \`.glb\` przyciskami na pasku narzędzi.
+6. Włącz kamerę. Palcem wskazującym celuj w panel i wykonaj **pinch (kciuk + wskazujący)**, aby go chwycić.
+7. Złącz palce obu rąk, aby skalować i obracać zaznaczony panel.
+8. Przytrzymaj otwartą dłoń, aby wywołać menu kołowe, potem wskaż jego opcję i wykonaj pinch.
+
+**Skróty:** M — menu, P — pauza, R — reset układu, Esc — zamknij menu.
+
+### Technologia i ograniczenia
+
+HoloDesk używa MediaPipe Hand Landmarker (po 21 punktów na dłoń), CSS transforms z perspektywą, lokalnego JavaScript i osobnego modułu Three.js do modeli GLB. Biblioteki i modele pobierane są z CDN przy pierwszym użyciu; przetwarzanie klatek kamery i import plików pozostają na urządzeniu. **Nie jest to prawdziwy hologram ani metrologiczne śledzenie 3D**: jedna kamera RGB daje przede wszystkim współrzędne obrazu 2D, a operacje przestrzenne są mapowane na wirtualny pulpit.
+
+Nie należy używać HoloDesk do sterowania rzeczywistymi robotami, maszynami ani jako funkcji bezpieczeństwa.
+
+### Testy
+
+GitHub Actions wykonuje \`node --test tests/*.test.mjs\`, sprawdzając automaty gestów i bezwładność V5, wcześniejsze gesty V4 i HoloLab oraz składnię modułów. Testy nie zastępują walidacji na kamerze i w docelowej przeglądarce.
