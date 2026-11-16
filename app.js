@@ -370,7 +370,7 @@ function updateHandCursor(hands,now){
 }
 function clickTarget(button){
   clicks++;
-  ui.clickCount.textContent=clicks+' kliknięć';
+  ui.clickCount.textContent=clicks===1?'1 kliknięcie':(clicks%10>=2&&clicks%10<=4&&(clicks%100<12||clicks%100>14)?clicks+' kliknięcia':clicks+' kliknięć');
   ui.clicksMetric.textContent=String(clicks);
   ui.feedback.textContent='✓ Kliknięto punkt '+button.dataset.action+'!';
   targets.forEach(target=>target.classList.toggle('selected',target===button));
