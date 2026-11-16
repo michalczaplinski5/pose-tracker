@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DeskGestureEngine, Inertia, toHand } from '../desk-engine.mjs';
+import { DeskGestureEngine, DeskPointerFilter, Inertia, toHand } from '../desk-engine.mjs';
 
 const P=(id,x=.5,y=.5,pinchRatio=1,extra={})=>({
   id,point:{x,y},palm:{x,y},pinchRatio,open:false,fist:false,...extra
@@ -44,7 +44,8 @@ test('single pinch starts grip, movement emits deltas, release preserves velocit
   const move=e.update([P('Right',.42,.48,.2)],1040);
   assert.ok(types(move).includes('move'));
   assert.ok(one(move,'move').dx<=.085);
-  const end=e.update([P('Right',.44,.5,.9)],1110);
+  e.update([P('Right',.44,.5,1.25)],1110);
+  const end=e.update([P('Right',.44,.5,1.25)],1230);
   assert.ok(types(end).includes('release'));
   assert.ok(one(end,'release').velocity.x>0);
   assert.equal(e.mode,'idle');
@@ -55,7 +56,9 @@ test('pinch hysteresis avoids flicker near threshold',()=>{
   assert.equal(e.mode,'single');
   e.update([P('Right',.3,.4,.52)],1050);
   assert.equal(e.mode,'single');
-  e.update([P('Right',.3,.4,.70)],1100);
+  e.update([P('Right',.3,.4,1.25)],1100);
+  assert.equal(e.mode,'single'); // release confirmation avoids one-frame jitter
+  e.update([P('Right',.3,.4,1.25)],1210);
   assert.equal(e.mode,'idle');
 });
 test('two simultaneous pinches emit scale, rotation, pan deltas',()=>{
@@ -81,7 +84,7 @@ test('tracking loss cancels grip after short grace',()=>{
   const e=new DeskGestureEngine();
   e.update([P('Right',.5,.4,.2)],1000);
   assert.ok(!types(e.update([],1100)).includes('release'));
-  assert.ok(one(e.update([],1250),'release').cancelled);
+  assert.ok(one(e.update([],1360),'release').cancelled);
   assert.equal(e.mode,'idle');
 });
 test('open palm held 700 ms emits radial menu once',()=>{
@@ -89,8 +92,8 @@ test('open palm held 700 ms emits radial menu once',()=>{
   const palm=P('Right',.55,.3,1,{open:true});
   assert.ok(!types(e.update([palm],1000)).includes('menu'));
   assert.ok(!types(e.update([palm],1300)).includes('menu'));
-  assert.ok(types(e.update([palm],1720)).includes('menu'));
-  assert.ok(!types(e.update([palm],1900)).includes('menu'));
+  assert.ok(types(e.update([palm],1900)).includes('menu'));
+  assert.ok(!types(e.update([palm],2100)).includes('menu'));
 });
 test('radial menu gesture does not activate while gripping an object',()=>{
   const e=new DeskGestureEngine();
@@ -102,7 +105,7 @@ test('fist held 950 ms pauses controls',()=>{
   const e=new DeskGestureEngine(),f=P('Right',.5,.5,1,{fist:true});
   e.update([f],1000);
   assert.ok(!types(e.update([f],1500)).includes('pause'));
-  assert.ok(types(e.update([f],1970)).includes('pause'));
+  assert.ok(types(e.update([f],2050)).includes('pause'));
   assert.equal(e.paused,true);
 });
 test('open palm resumes after pause',()=>{
@@ -147,6 +150,54 @@ test('all old demos and dedicated HoloDesk are present',()=>{
   assert.ok(holo.includes('holo.js?v=1'));
   for(const id of ['workspace','radial-menu','window-layer','image-input','glb-input',
     'camera-start','model-canvas','notes-editor','gesture-pointer'])assert.ok(desk.includes('id="'+id+'"'),id);
-  assert.ok(desk.includes('desk.js?v=5'));
+  assert.ok(desk.includes('desk.js?v=51'));
   assert.ok(desk.includes('type="importmap"'));
+});
+
+
+test('medium pinch requires a short confirmation instead of one noisy frame',()=>{
+  const e=new DeskGestureEngine();
+  assert.ok(!types(e.update([P('Right',.4,.4,.5)],1000)).includes('press'));
+  assert.ok(!types(e.update([P('Right',.4,.4,1.2)],1040)).includes('press'));
+  assert.ok(!types(e.update([P('Right',.4,.4,.5)],1100)).includes('press'));
+  assert.ok(types(e.update([P('Right',.4,.4,.5)],1190)).includes('press'));
+});
+test('single frame of false open-pinch distance does not release the held window',()=>{
+  const e=new DeskGestureEngine();
+  e.update([P('Right',.4,.4,.19)],1000);
+  assert.equal(e.mode,'single');
+  e.update([P('Right',.4,.4,1.12)],1040);
+  e.update([P('Right',.4,.4,.3)],1080);
+  assert.equal(e.mode,'single');
+});
+test('short dropout in both hands preserves grip, prolonged dropout cancels it',()=>{
+  const e=new DeskGestureEngine();
+  e.update([P('Right',.4,.4,.1)],1000);
+  e.update([],1190);
+  assert.equal(e.mode,'single');
+  const lost=e.update([],1320);
+  assert.ok(one(lost,'release').cancelled);
+});
+test('two-hand mode tolerates brief occlusion of one hand',()=>{
+  const e=new DeskGestureEngine();
+  e.update([P('Left',.2,.5,.1),P('Right',.8,.5,.1)],1000);
+  assert.equal(e.mode,'dual');
+  e.update([P('Right',.8,.5,.1)],1070);
+  assert.equal(e.mode,'dual');
+});
+test('adaptive pointer mapping covers workspace from a shorter comfortable hand range',()=>{
+  const f=new DeskPointerFilter();
+  const a=f.update({x:.24,y:.25},1000,{profile:{minX:.24,maxX:.76,minY:.25,maxY:.78}});
+  assert.ok(a.x<.03&&a.y<.035);
+  f.reset();
+  const b=f.update({x:.76,y:.78},1200,{profile:{minX:.24,maxX:.76,minY:.25,maxY:.78}});
+  assert.ok(b.x>.96&&b.y>.96);
+});
+test('pointer smoothing reduces jitter and resets after tracking gap',()=>{
+  const f=new DeskPointerFilter();
+  f.update({x:.5,y:.5},1000,{smooth:85});
+  const a=f.update({x:.52,y:.51},1040,{smooth:85});
+  assert.ok(a.x<.527);
+  const b=f.update({x:.8,y:.8},1600,{smooth:85});
+  assert.ok(b.x>.85);
 });
