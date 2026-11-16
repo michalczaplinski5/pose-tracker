@@ -1,4 +1,4 @@
-import { DeskGestureEngine, Inertia, toHand, clamp } from './desk-engine.mjs';
+import { DeskGestureEngine, DeskPointerFilter, Inertia, toHand, clamp } from './desk-engine.mjs';
 
 const $=id=>document.getElementById(id);
 const ui={
@@ -12,16 +12,28 @@ const ui={
   dataFps:$('data-fps'),dataPanels:$('data-panels'),mode:$('mode-value'),
   status:$('mode-text'),workspaceState:$('workspace-state'),gestureState:$('gesture-state'),
   notes:$('notes-editor'),modelStage:$('model-stage'),modelCanvas:$('model-canvas'),
-  modelFallback:$('model-fallback'),modelLabel:$('model-file-label'),help:$('show-help')
+  modelFallback:$('model-fallback'),modelLabel:$('model-file-label'),help:$('show-help'),
+  reach:$('reach'),reachLabel:$('reach-label'),smooth:$('smooth'),smoothLabel:$('smooth-label'),
+  pinch:$('pinch'),pinchLabel:$('pinch-label'),quality:$('tracking-quality'),
+  gestureName:$('recognized-gesture'),gestureMetric:$('gesture-metric'),
+  cursorCaption:$('cursor-caption'),calStart:$('calibration-start'),
+  calReset:$('calibration-reset'),calNote:$('calibration-note'),
+  calLayer:$('calibration-layer'),calTitle:$('calibration-title'),
+  calText:$('calibration-instruction'),calMarker:$('calibration-marker'),
+  calCapture:$('calibration-capture'),calCancel:$('calibration-cancel')
 };
 const ctx=ui.overlay.getContext('2d');
 const engine=new DeskGestureEngine();
+const pointerFilter=new DeskPointerFilter();
+const calibration={active:false,points:[],lastRaw:null,profile:null};
+let gestureDelta={x:0,y:0};
+let lastAimAt=0;
 const HAND_EDGES=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
   [5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],
   [13,17],[17,18],[18,19],[19,20],[0,17]];
 const states=new Map(),urls=new Set(),smoothHands=new Map();
 let front=10,activeId='model',grabbing=null,mouseDrag=null,gesturePoint={x:.5,y:.5};
-let menuOpen=false,menuUntil=0,stream=null,handModel=null,starting=false,running=false;
+let menuOpen=false,stream=null,handModel=null,starting=false,running=false;
 let cameraEpoch=0,detectRaf=0,lastVideoTime=-1,lastDetection=-Infinity,detected=0,lastFps=0;
 let handCount=0,three=null,viewer=null,viewerPromise=null,lastTick=performance.now();
 let raf=0,photoCount=0,modelRotation={x:.18,y:.15},viewerDrag=null;
@@ -109,10 +121,19 @@ function screenPoint(point){
   const r=workspaceRect();
   return {x:r.left+point.x*r.width,y:r.top+point.y*r.height};
 }
+function nearestRectDistance(pos,rect){
+  const dx=Math.max(rect.left-pos.x,0,pos.x-rect.right);
+  const dy=Math.max(rect.top-pos.y,0,pos.y-rect.bottom);
+  return Math.hypot(dx,dy);
+}
 function pointerTarget(point){
   const screen=screenPoint(point);
-  return [...states.values()].filter(s=>s.visible&&
-    hitRect(screen,s.element.getBoundingClientRect())).sort((a,b)=>b.zIndex-a.zIndex)[0]||null;
+  // 64 px magnetic grab radius: no pixel-perfect aiming at moving 3D panels.
+  const options=[...states.values()].filter(s=>s.visible).map(s=>({
+    st:s,d:nearestRectDistance(screen,s.element.getBoundingClientRect())
+  })).filter(x=>x.d<=64).sort((a,b)=>
+    (a.d===0&&b.d===0)?b.st.zIndex-a.st.zIndex:a.d-b.d);
+  return options[0]?.st||null;
 }
 function hitRect(p,r){return p.x>=r.left&&p.x<=r.right&&p.y>=r.top&&p.y<=r.bottom;}
 function clampPosition(st){
@@ -194,7 +215,10 @@ function activateMenu(command){
 function menuButtonAt(point){
   if(!menuOpen)return null;
   const pos=screenPoint(point);
-  return [...ui.radial.querySelectorAll('button')].find(b=>hitRect(pos,b.getBoundingClientRect()))||null;
+  const matches=[...ui.radial.querySelectorAll('button')].map(button=>({
+    button,d:nearestRectDistance(pos,button.getBoundingClientRect())
+  })).filter(x=>x.d<=28).sort((a,b)=>a.d-b.d);
+  return matches[0]?.button||null;
 }
 function updateAim(point){
   const hovered=menuButtonAt(point);
@@ -204,23 +228,38 @@ function updateAim(point){
 }
 function onDeskEvent(event,now){
   switch(event.type){
-    case 'pointer':
-      gesturePoint={x:clamp((event.x-.05)/.90,.01,.99),y:clamp((event.y-.05)/.90,.01,.99)};
+    case 'pointer': {
+      const previous=gesturePoint;
+      calibration.lastRaw={x:event.x,y:event.y};
+      gesturePoint=pointerFilter.update({x:event.x,y:event.y},now,{
+        reach:ui.reach.value,smooth:ui.smooth.value,profile:calibration.profile
+      });
+      gestureDelta={x:gesturePoint.x-previous.x,y:gesturePoint.y-previous.y};
       ui.cursor.hidden=engine.paused;
       ui.cursor.style.left=gesturePoint.x*100+'%';
       ui.cursor.style.top=gesturePoint.y*100+'%';
       ui.cursor.classList.toggle('active',event.active);
-      if(menuOpen)updateAim(gesturePoint);
-      else if(!grabbing){
+      if(calibration.active){
+        ui.cursorCaption.textContent='KALIBRACJA '+(calibration.points.length+1)+'/2';
+      }else if(menuOpen){
+        updateAim(gesturePoint);
+        ui.cursorCaption.textContent=menuButtonAt(gesturePoint)?.textContent.trim().slice(0,18)||'WYBIERZ OPCJĘ';
+      }else if(grabbing){
+        ui.cursorCaption.textContent='TRZYMASZ '+grabbing.id.toUpperCase();
+      }else{
         const hover=pointerTarget(gesturePoint);
         for(const st of states.values())st.element.classList.toggle('aimed',st===hover);
+        ui.cursorCaption.textContent=hover?'CHWYĆ '+hover.id.toUpperCase():'WSKAŻ OKNO';
       }
       break;
+    }
     case 'menu':
+      if(calibration.active)break;
       if(menuOpen)closeMenu();
       else showMenu(gesturePoint.x,gesturePoint.y);
       break;
     case 'press':
+      if(calibration.active){captureCalibrationPoint();break;}
       if(menuOpen){
         const button=menuButtonAt(gesturePoint);
         if(button)activateMenu(button.dataset.command);
@@ -233,15 +272,17 @@ function onDeskEvent(event,now){
         grabbing.inertia.stop();
         ui.status.textContent='GRABBING';
         ui.gestureState.textContent='PINCH';
-      }
+        announce('Chwycono: '+grabbing.id+'. Przesuń dłoń i rozłącz palce, aby upuścić.');
+      }else announce('Nie ma panelu blisko kursora. Przesuń dłoń w kierunku okna.');
       break;
     case 'move':
-      if(grabbing&&!menuOpen){
-        grabbing.x+=event.dx/.90;grabbing.y+=event.dy/.90;
+      if(grabbing&&!menuOpen&&!calibration.active){
+        grabbing.x+=gestureDelta.x;grabbing.y+=gestureDelta.y;
         clampPosition(grabbing);renderWindow(grabbing);
       }
       break;
     case 'dual-start':
+      if(calibration.active)break;
       if(menuOpen)closeMenu();
       if(!grabbing){
         grabbing=states.get(activeId)||pointerTarget(gesturePoint);
@@ -252,8 +293,9 @@ function onDeskEvent(event,now){
       ui.gestureState.textContent='TRANSFORM';
       break;
     case 'dual':
-      if(grabbing){
-        grabbing.x+=event.dx/.90;grabbing.y+=event.dy/.90;
+      if(grabbing&&!calibration.active){
+        grabbing.x+=event.dx/Math.max(.45,Number(ui.reach.value)/100);
+        grabbing.y+=event.dy/Math.max(.45,Number(ui.reach.value)/100);
         grabbing.scale=clamp(grabbing.scale*event.scale,.56,1.75);
         grabbing.rotation+=event.rotation*180/Math.PI;
         clampPosition(grabbing);renderWindow(grabbing);
@@ -262,8 +304,12 @@ function onDeskEvent(event,now){
     case 'release':
       if(grabbing){
         grabbing.element.classList.remove('grabbed');
-        if(!event.cancelled&&!menuOpen){
-          grabbing.inertia.launch(event.velocity?.x||0,event.velocity?.y||0);
+        if(!event.cancelled&&!menuOpen&&!calibration.active){
+          const gain=1/Math.max(.45,Number(ui.reach.value)/100);
+          const vx=(event.velocity?.x||0)*gain,vy=(event.velocity?.y||0)*gain;
+          // Ordinary deliberate release stays where it was; only a fast flick throws.
+          if(Math.hypot(vx,vy)>.42)grabbing.inertia.launch(vx,vy);
+          else grabbing.inertia.stop();
         }
         grabbing=null;
       }
@@ -540,7 +586,7 @@ async function startCamera(){
     announce('Kamera aktywna, pobieranie modelu dłoni MediaPipe…');
     await loadHandModel();
     if(ticket!==cameraEpoch)return;
-    engine.reset();
+    engine.reset();setPinchSensitivity();pointerFilter.reset();smoothHands.clear();
     running=true;lastVideoTime=-1;lastDetection=-Infinity;detected=0;lastFps=performance.now();
     announce('Śledzenie aktywne. Przytrzymaj otwartą dłoń przez 0,7 sekundy, aby otworzyć menu.');
     detectRaf=requestAnimationFrame(detectFrame);
@@ -562,7 +608,8 @@ function stopCamera(){
   ui.cam.srcObject=null;
   ctx.clearRect(0,0,ui.overlay.width,ui.overlay.height);
   dispatch(engine.end(true),performance.now());
-  engine.reset();smoothHands.clear();closeMenu();grabbing=null;
+  engine.reset();smoothHands.clear();pointerFilter.reset();cancelCalibration();
+  closeMenu();grabbing=null;
   ui.cursor.hidden=true;handCount=0;updateHandValues();updateCameraState(false);
   ui.start.disabled=false;
   announce('Kamera wyłączona. Pulpitem można nadal sterować myszką.');
@@ -624,6 +671,7 @@ function detectFrame(now){
       drawHands(seen);
       handCount=handSamples.length;updateHandValues();
       dispatch(engine.update(handSamples,now),now);
+      updateGestureDiagnostics(handSamples);
       ui.gestureState.textContent=engine.paused?'PAUSED':engine.mode.toUpperCase();
       detected++;
     }
@@ -655,6 +703,20 @@ function showHelp(){
 }
 function installEvents(){
   ui.start.addEventListener('click',()=>void startCamera());
+  for(const [input,output,unit] of [
+    [ui.reach,ui.reachLabel,'%'],[ui.smooth,ui.smoothLabel,'%'],[ui.pinch,ui.pinchLabel,'%']
+  ]){
+    input.addEventListener('input',()=>{
+      output.textContent=input.value+unit;
+      if(input===ui.pinch)setPinchSensitivity();
+      if(input===ui.reach||input===ui.smooth)pointerFilter.reset();
+      saveInputSettings();
+    });
+  }
+  ui.calStart.addEventListener('click',startCalibration);
+  ui.calCapture.addEventListener('click',captureCalibrationPoint);
+  ui.calCancel.addEventListener('click',cancelCalibration);
+  ui.calReset.addEventListener('click',resetCalibration);
   ui.stop.addEventListener('click',stopCamera);
   ui.pause.addEventListener('click',pauseAction);
   ui.menuOpen.addEventListener('click',()=>menuOpen?closeMenu():showMenu());
@@ -720,7 +782,102 @@ function installEvents(){
     });
   });
 }
+
+function setPinchSensitivity(){
+  const level=clamp(Number(ui.pinch.value),0,100);
+  const start=.39+level*.0043;
+  engine.setConfig({start,end:start+.32,onMs:65,offMs:105});
+}
+function saveInputSettings(){
+  try{localStorage.setItem('poseTracker:desk:controls',JSON.stringify({
+    reach:Number(ui.reach.value),smooth:Number(ui.smooth.value),pinch:Number(ui.pinch.value)
+  }));}catch(error){console.warn('Settings not stored',error);}
+}
+function restoreInputSettings(){
+  try{
+    const values=JSON.parse(localStorage.getItem('poseTracker:desk:controls')||'{}');
+    for(const key of ['reach','smooth','pinch']){
+      if(Number.isFinite(values[key]))ui[key].value=values[key];
+    }
+    calibration.profile=JSON.parse(localStorage.getItem('poseTracker:desk:calibration')||'null');
+  }catch(error){calibration.profile=null;console.warn('Settings not loaded',error);}
+  for(const key of ['reach','smooth','pinch'])ui[key+'Label'].textContent=ui[key].value+'%';
+}
+function updateCalibrationNote(){
+  ui.calNote.textContent=calibration.profile?
+    'Kalibracja aktywna: kursor dopasowany do Twojego zakresu ruchu.':
+    'Brak kalibracji. Używany jest domyślny, rozszerzony zakres sterowania.';
+}
+function startCalibration(){
+  if(!running){announce('Najpierw uruchom kamerę, żeby wykonać kalibrację.');return;}
+  closeMenu();
+  calibration.active=true;calibration.points=[];
+  dispatch(engine.end(true),performance.now());
+  ui.calLayer.hidden=false;pointerFilter.reset();
+  drawCalibrationStep();
+}
+function drawCalibrationStep(){
+  const step=calibration.points.length;
+  const first=step===0;
+  ui.calTitle.textContent='KALIBRACJA / '+(step+1)+' Z 2';
+  ui.calText.textContent=first?
+    'Wyprostuj palec wskazujący i ustaw go w wygodnym lewym górnym rogu przestrzeni ruchu. Zrób krótkie szczypnięcie lub kliknij Zapisz pozycję.':
+    'Przesuń palec wskazujący do wygodnego prawego dolnego rogu. Zrób szczypnięcie lub kliknij Zapisz pozycję.';
+  ui.calMarker.style.left=(first?15:85)+'%';
+  ui.calMarker.style.top=(first?20:80)+'%';
+  ui.calNote.textContent='Kalibracja — punkt '+(step+1)+' z 2.';
+}
+function captureCalibrationPoint(){
+  if(!calibration.active)return;
+  if(!calibration.lastRaw||!running){
+    announce('Nie widać dłoni. Wyprostuj palec wskazujący przed kamerą.');
+    return;
+  }
+  calibration.points.push({...calibration.lastRaw});
+  if(calibration.points.length<2){drawCalibrationStep();return;}
+  const [a,b]=calibration.points;
+  if(b.x-a.x<.14||b.y-a.y<.14){
+    calibration.points=[];
+    drawCalibrationStep();
+    announce('Punkty za blisko lub w złej kolejności. Rozsuń wygodny zakres ruchu.');
+    return;
+  }
+  calibration.profile={minX:a.x,maxX:b.x,minY:a.y,maxY:b.y};
+  try{localStorage.setItem('poseTracker:desk:calibration',JSON.stringify(calibration.profile));}
+  catch(error){console.warn('Calibration storage',error);}
+  calibration.active=false;calibration.points=[];
+  ui.calLayer.hidden=true;pointerFilter.reset();
+  updateCalibrationNote();
+  announce('Kalibracja zapisana. Spróbuj teraz chwycić najbliższy panel.');
+}
+function cancelCalibration(){
+  calibration.active=false;calibration.points=[];
+  ui.calLayer.hidden=true;updateCalibrationNote();
+}
+function resetCalibration(){
+  cancelCalibration();calibration.profile=null;pointerFilter.reset();
+  try{localStorage.removeItem('poseTracker:desk:calibration');}catch(error){console.warn(error);}
+  updateCalibrationNote();announce('Przywrócono domyślne mapowanie kamery.');
+}
+function updateGestureDiagnostics(hands){
+  ui.quality.textContent=hands.length?hands.length+' DŁOŃ'+(hands.length===1?'':'IE'):'BRAK DŁONI';
+  if(!hands.length){
+    ui.gestureName.textContent='SZUKAM DŁONI';
+    ui.gestureMetric.textContent='Pinch —';return;
+  }
+  const hand=hands.find(h=>h.id===engine.primary)||hands[0];
+  let gesture='WSKAZYWANIE';
+  if(engine.paused)gesture='PAUZA';
+  else if(engine.mode==='dual')gesture='OBIE DŁONIE';
+  else if(engine.mode==='single')gesture='SZCZYPNIĘCIE';
+  else if(hand.fist)gesture='PIĘŚĆ';
+  else if(hand.open)gesture='OTWARTA DŁOŃ';
+  ui.gestureName.textContent=gesture;
+  ui.gestureMetric.textContent='Pinch '+hand.pinchRatio.toFixed(2);
+}
+
 function init(){
+  restoreInputSettings();setPinchSensitivity();updateCalibrationNote();
   setupWindows();restoreNotes();installEvents();beginViewerDrag();
   ui.cursor.hidden=true;
   lastTick=performance.now();raf=requestAnimationFrame(animate);
