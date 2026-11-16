@@ -141,7 +141,7 @@ export class GestureMachine {
       }
     } else { this.holdKind = ''; this.toggleLatched = false; }
 
-    if (this.paused || kind === 'none' || kind === 'fist' || kind === 'open') {
+    if (this.paused || kind === 'none' || kind === 'fist') {
       // A disappearing or changing hand releases an active drag safely.
       if (this.dragging) {
         events.push({ type: 'dragEnd', cancelled: true });
@@ -173,6 +173,11 @@ export class GestureMachine {
         this.lastTap = now;
       }
       this.pinching = false; this.dragging = false; this.pinchStarted = -1;
+    }
+
+    if (kind === 'open') {
+      this.scrollStarted = -1; this.scrollY = null;
+      return events;
     }
 
     if (kind === 'peace') {
