@@ -40,6 +40,7 @@ PERMITTED_ORIGINS = {
 }
 INACTIVITY_LIMIT = 2.0
 MIN_CLICK_GAP = 0.40
+WATCHDOG_PERIOD = 0.30
 
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.01
@@ -51,9 +52,34 @@ class BridgeState:
         self.armed = False
         self.last_packet = 0.0
         self.last_click = 0.0
+        self.mouse_down = False
+        self.scroll_remainder = 0.0
 
 
 state = BridgeState()
+
+
+def release_mouse_locked() -> None:
+    """Called with state.lock held; release a held button on every stop path."""
+    if state.mouse_down:
+        try:
+            pyautogui.mouseUp(button="left")
+        finally:
+            state.mouse_down = False
+
+
+def watchdog() -> None:
+    while True:
+        time.sleep(WATCHDOG_PERIOD)
+        with state.lock:
+            if state.armed and time.monotonic() - state.last_packet > INACTIVITY_LIMIT:
+                state.armed = False
+                try:
+                    release_mouse_locked()
+                except Exception as exc:
+                    print("Watchdog mouse-up error:", exc)
+
+
 
 
 class BridgeHandler(BaseHTTPRequestHandler):
@@ -80,6 +106,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 active = state.armed and time.monotonic() - state.last_packet <= INACTIVITY_LIMIT
                 if not active:
                     state.armed = False
+                    release_mouse_locked()
             return self.json_reply({"available": True, "armed": active})
 
         files = {
@@ -122,42 +149,64 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 return self.json_reply({"error": "Expected armed boolean"}, 400)
             with state.lock:
                 state.armed = payload["armed"]
+                if not state.armed:
+                    release_mouse_locked()
                 state.last_packet = time.monotonic() if state.armed else 0
             return self.json_reply({"armed": state.armed})
 
-        x, y, clicked = payload.get("x"), payload.get("y"), payload.get("click", False)
-        if (type(x) not in (float, int)
+        x, y = payload.get("x"), payload.get("y")
+        event = payload.get("event", "move")
+        scroll_amount = payload.get("scroll", 0)
+        if (event not in {"move", "click", "down", "up", "scroll"}
+                or type(x) not in (float, int)
                 or type(y) not in (float, int)
-                or type(clicked) is not bool
-                or not math.isfinite(x)
-                or not math.isfinite(y)
-                or not (0 <= x <= 1 and 0 <= y <= 1)):
-            return self.json_reply({"error": "Invalid coordinates"}, 400)
+                or not (math.isfinite(x) and math.isfinite(y))
+                or not (0 <= x <= 1 and 0 <= y <= 1)
+                or type(scroll_amount) not in (float, int)
+                or not math.isfinite(scroll_amount)
+                or abs(scroll_amount) > 3):
+            return self.json_reply({"error": "Invalid mouse command"}, 400)
 
         with state.lock:
             now = time.monotonic()
             if not state.armed or now - state.last_packet > INACTIVITY_LIMIT:
                 state.armed = False
+                release_mouse_locked()
                 return self.json_reply({"error": "Disarmed (timeout)"}, 409)
             state.last_packet = now
 
-            # Keep the tracking target away from screen corners,
-            # so PyAutoGUI's manual corner failsafe remains reachable.
+            # Leave a 3.5% margin so PyAutoGUI corner failsafe remains reachable.
             width, height = pyautogui.size()
             screen_x = round((0.035 + 0.93 * x) * (width - 1))
             screen_y = round((0.035 + 0.93 * y) * (height - 1))
             try:
                 pyautogui.moveTo(screen_x, screen_y, duration=0)
-                if clicked and now - state.last_click >= MIN_CLICK_GAP:
-                    pyautogui.click()
+                if event == "click" and not state.mouse_down and now - state.last_click >= MIN_CLICK_GAP:
+                    pyautogui.click(button="left")
                     state.last_click = now
+                elif event == "down" and not state.mouse_down:
+                    pyautogui.mouseDown(button="left")
+                    state.mouse_down = True
+                elif event == "up":
+                    release_mouse_locked()
+                elif event == "scroll":
+                    state.scroll_remainder += float(scroll_amount)
+                    ticks = math.trunc(state.scroll_remainder)
+                    state.scroll_remainder -= ticks
+                    if ticks:
+                        pyautogui.scroll(ticks)
             except pyautogui.FailSafeException:
                 state.armed = False
+                release_mouse_locked()
                 return self.json_reply({"error": "PyAutoGUI failsafe activated"}, 409)
             except Exception as exc:
                 state.armed = False
+                try:
+                    release_mouse_locked()
+                except Exception:
+                    pass
                 return self.json_reply({"error": str(exc)}, 500)
-        self.json_reply({"ok": True, "armed": True})
+        self.json_reply({"ok": True, "armed": True, "button_down": state.mouse_down})
 
     def log_message(self, format: str, *args: object) -> None:
         # Avoid logging each pointer movement (up to ~15 requests/s).
@@ -166,6 +215,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    threading.Thread(target=watchdog, daemon=True, name="mouse-watchdog").start()
     server = ThreadingHTTPServer((HOST, PORT), BridgeHandler)
     print(f"PoseTracker RobotLab: http://{HOST}:{PORT}")
     print("Most lokalny: domyślnie ROZBROJONY. Aby zatrzymać: Ctrl+C.")
@@ -176,4 +226,5 @@ if __name__ == "__main__":
     finally:
         with state.lock:
             state.armed = False
+            release_mouse_locked()
         server.server_close()
