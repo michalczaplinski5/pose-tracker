@@ -30,8 +30,8 @@ export function toHand(points,id='Right',mirror=true){
     point:conv(index),palm:conv(points[9]),pinchPoint:conv(mid),
     pinchRatio,extended:extension,
     // Tolerate one partially occluded finger; timed holds suppress spurious triggers.
-    open:extension.filter(Boolean).length>=3&&pinchRatio>.86,
-    fist:extension.filter(Boolean).length<=1&&pinchRatio>.72
+    open:extension.filter(Boolean).length>=3&&pinchRatio>.58,
+    fist:extension.filter(Boolean).length<=1&&pinchRatio>.48
   };
 }
 
