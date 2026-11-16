@@ -221,6 +221,7 @@ test('open-hand menu hold tolerates one short occluded frame',()=>{
   const e=new DeskGestureEngine();
   const palm=P('Right',.5,.5,1.4,{open:true});
   e.update([palm],1000);
-  e.update([P('Right',.5,.5,1.4)],1400);
-  assert.ok(types(e.update([palm],1920)).includes('menu'));
+  e.update([P('Right',.5,.5,1.4)],1040); // one false-negative frame
+  e.update([palm],1080);
+  assert.ok(types(e.update([palm],1900)).includes('menu'));
 });
